@@ -1,6 +1,7 @@
 /// Barrel dos modelos de domínio.
 library;
 
+export 'arquitetura.dart';
 export 'enums.dart';
 export 'evento_sensor.dart';
 export 'kpis.dart';

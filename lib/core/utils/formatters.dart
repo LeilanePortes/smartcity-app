@@ -39,6 +39,9 @@ abstract final class Fmt {
 
   static String percentual(num v, {int casas = 0}) => '${_decimal(v, casas)}%';
 
+  /// Bytes em KB (÷1024) com 1 casa — tráfego da arquitetura.
+  static String kb(num bytes) => '${_decimal(bytes / 1024, 1)} KB';
+
   static String coordenadas(double lat, double lng) =>
       '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
 
@@ -46,7 +49,12 @@ abstract final class Fmt {
   static final DateFormat _dataHora = DateFormat("dd/MM 'às' HH:mm", 'pt_BR');
   static final DateFormat _dataCurta = DateFormat('dd/MM', 'pt_BR');
 
+  static final DateFormat _horaSegundos = DateFormat('HH:mm:ss', 'pt_BR');
+
   static String hora(DateTime d) => _hora.format(d.toLocal());
+
+  /// "18:11:06" — horários que mudam a cada minuto (arquitetura).
+  static String horaSegundos(DateTime d) => _horaSegundos.format(d.toLocal());
   static String dataHora(DateTime d) => _dataHora.format(d.toLocal());
   static String dataCurta(DateTime d) => _dataCurta.format(d.toLocal());
 

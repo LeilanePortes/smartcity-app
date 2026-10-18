@@ -121,6 +121,15 @@ class SmartcityApi {
     );
     return PostesPorStatus.fromJson(data);
   }
+
+  /// `GET /arquitetura` — estado das camadas edge · fog · nuvem.
+  Future<EstadoArquitetura> arquitetura({CancelToken? cancelToken}) async {
+    final data = await _client.get<Map<String, dynamic>>(
+      '/arquitetura',
+      cancelToken: cancelToken,
+    );
+    return EstadoArquitetura.fromJson(data);
+  }
 }
 
 /// Provider da fachada da API.
