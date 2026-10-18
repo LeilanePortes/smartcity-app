@@ -229,4 +229,68 @@ class FakeSmartcityApi extends SmartcityApi {
       ],
     );
   }
+
+  /// Resposta de `GET /arquitetura` devolvida pelo fake (troque nos testes).
+  Map<String, dynamic> arquiteturaJson = jsonArquiteturaCamadas();
+
+  /// Se não nulo, `arquitetura()` lança este erro.
+  Object? erroArquitetura;
+
+  int chamadasArquitetura = 0;
+
+  @override
+  Future<EstadoArquitetura> arquitetura({CancelToken? cancelToken}) async {
+    chamadasArquitetura++;
+    if (erroArquitetura != null) throw erroArquitetura!;
+    return EstadoArquitetura.fromJson(arquiteturaJson);
+  }
 }
+
+/// Payload no formato real de `GET /arquitetura` (modo camadas). O alerta
+/// aponta para o poste `a2` (P-002) do fake, para o toque abrir o detalhe.
+Map<String, dynamic> jsonArquiteturaCamadas() => {
+      'modo': 'camadas',
+      'nuvem': {'brokerConectado': true},
+      'edge': {'online': true},
+      'fog': {
+        'online': true,
+        'gateways': [
+          {'bairro': 'Centro', 'postes': 46, 'online': 46},
+          {'bairro': 'Setor Oeste', 'postes': 21, 'online': 20},
+        ],
+        'buffer': 0,
+        'atualizadoEm': '2026-10-18T18:11:06.722Z',
+      },
+      'trafego': {
+        'janelaS': 60,
+        'entrada': {'msgs': 1586, 'bytes': 237231},
+        'saida': {'msgs': 137, 'bytes': 98834},
+        'reducaoMsgsPct': 91,
+        'reducaoBytesPct': 58,
+        'postes': {'total': 248, 'online': 243},
+        'em': '2026-10-18T18:11:06.722Z',
+      },
+      'alertas': [
+        {
+          'posteId': 'a2',
+          'codigo': 'P-002',
+          'bairro': 'Setor Oeste',
+          'statusAnterior': 'NORMAL',
+          'status': 'CONSUMO_ALTO',
+          'motivo': 'consumo 2,10× a mediana do bairro',
+          'em': '2026-10-18T18:11:26.712Z',
+        },
+      ],
+      'geradoEm': '2026-10-18T18:11:46.729Z',
+    };
+
+/// Modo de reserva: edge, fog e tráfego nulos, sem alertas.
+Map<String, dynamic> jsonArquiteturaInterno() => {
+      'modo': 'interno',
+      'nuvem': {'brokerConectado': false},
+      'edge': null,
+      'fog': null,
+      'trafego': null,
+      'alertas': <Map<String, dynamic>>[],
+      'geradoEm': '2026-10-18T18:11:46.729Z',
+    };
