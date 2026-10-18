@@ -10,6 +10,7 @@ Itaguari, GO. Consome a API mockada do `smartcity-backend` (REST + WebSocket).
 | **Mapa da cidade** | `flutter_map` + OpenStreetMap, marcadores por status, heatmap de luminosidade, busca por rua/bairro, filtro por status, bottom sheet do poste. |
 | **Detalhe do poste** | Cabeçalho + badge, consumo ao vivo, barra de luminosidade (piso 50%), texto contextual, histórico com gráfico (Hoje/Semana/Mês), log do sensor 360°, ações de manutenção e "ver no mapa". |
 | **Dashboard de KPIs** | Seletor Dia/Semana/Mês/Ano, consumo e custo com variação, gráfico atual × anterior, ranking top 5, distribuição por status. |
+| **Arquitetura** | Fluxo edge → fog → nuvem com indicador de no ar / fora do ar (API e broker MQTT separados), redução de banda no fog (entrada × saída), gateways por bairro com buffer e alertas recentes do fog. Consulta `GET /arquitetura` a cada 12 s enquanto a aba está aberta. |
 
 Atualização em tempo real via Socket.IO: marcadores do mapa e a tela de detalhe
 reagem ao simulador do backend; selo "AO VIVO" indica o estado da conexão.
@@ -24,7 +25,7 @@ reagem ao simulador do backend; selo "AO VIVO" indica o estado da conexão.
 - **Design system BRUT:** IBM Plex Sans / Mono (`google_fonts`), radius 0, sem sombra
 
 Organização por feature em `lib/features/` (`mapa`, `detalhe_poste`, `kpis`,
-`shell`, `design_system`); base compartilhada em `lib/core/` e `lib/shared/`.
+`arquitetura`, `shell`, `design_system`); base compartilhada em `lib/core/` e `lib/shared/`.
 
 ## Rodando
 

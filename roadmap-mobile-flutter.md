@@ -49,6 +49,15 @@ Trilha independente, iniciada somente após o marco de conclusão da trilha de b
 - [ ] Testes de navegação ponta a ponta com dados mockados do backend.
 - [ ] Build final para apresentação da atividade.
 
+## Fase 7 · Arquitetura em camadas
+
+- [ ] Tela "Arquitetura" consumindo `GET /arquitetura` (edge → fog → nuvem).
+- [ ] Indicador de no ar / fora do ar por camada, com API e broker MQTT da nuvem separados.
+- [ ] Redução de banda no fog em destaque: entrada × saída (mensagens e KB), porcentagens e horário da janela.
+- [ ] Gateways do fog por bairro (postes online / total) e buffer de mensagens.
+- [ ] Alertas recentes do fog com acesso ao detalhe do poste.
+- [ ] Aviso de modo de reserva (`modo: "interno"`) e consulta periódica (12 s) enquanto a aba estiver aberta.
+
 ## Marco de conclusão
 
 A trilha mobile é considerada completa quando as três telas estão navegáveis, consumindo os dados reais da API mockada do backend (não mais dados estáticos locais), com atualização em tempo real funcional e consistência visual validada contra o design aprovado.
