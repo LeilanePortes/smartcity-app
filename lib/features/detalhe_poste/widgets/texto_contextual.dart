@@ -6,6 +6,72 @@ import '../../../core/theme/brut_typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/models.dart';
 
+/// Nota contextual do poste: ícone, cor, título e detalhe derivados do status
+/// e do último evento do sensor. Fonte única — usada pelo card de consumo em
+/// tempo real (rodapé) e pelo widget [TextoContextual].
+typedef NotaContextual = ({IconData icon, Color cor, String titulo, String detalhe});
+
+NotaContextual notaContextual(Poste poste, List<EventoSensor>? eventos) {
+  if (poste.status == StatusPoste.falhaOffline) {
+    final ultima = poste.ultimaLeituraEm;
+    return (
+      icon: Icons.wifi_off,
+      cor: BrutColors.statusFalha,
+      titulo: 'Telemetria ausente',
+      detalhe: ultima == null
+          ? 'Sem leitura válida registrada. Chamado aberto automaticamente.'
+          : 'Última leitura válida em ${Fmt.dataHora(ultima)} '
+              '(${Fmt.desde(ultima)}). Chamado aberto automaticamente.',
+    );
+  }
+
+  if (poste.status == StatusPoste.manutencao) {
+    return (
+      icon: Icons.build,
+      cor: BrutColors.statusManutencao,
+      titulo: 'Em manutenção',
+      detalhe: 'Luminosidade desligada. Status atribuído manualmente pelo '
+          'técnico.',
+    );
+  }
+
+  final ultimoEvento =
+      (eventos != null && eventos.isNotEmpty) ? eventos.first : null;
+
+  if (ultimoEvento != null &&
+      ultimoEvento.tipo == TipoEventoSensor.veiculoDetectado &&
+      poste.luminosidadeAtual >= 99) {
+    final sentido = ultimoEvento.sentido;
+    final dir = sentido == null
+        ? ''
+        : ' ${sentido == SentidoVeiculo.aproximando ? 'se aproximando' : 'se afastando'}';
+    return (
+      icon: Icons.directions_car,
+      cor: BrutColors.statusAtencao,
+      titulo: 'Veículo detectado$dir',
+      detalhe: 'Sensor 360° elevou a luminosidade para 100% às '
+          '${Fmt.hora(ultimoEvento.timestamp)}.',
+    );
+  }
+
+  if (poste.status == StatusPoste.consumoAlto) {
+    return (
+      icon: Icons.trending_up,
+      cor: BrutColors.statusAtencao,
+      titulo: 'Consumo acima da média',
+      detalhe: 'Consumo acima da média do trecho nas últimas 24 h.',
+    );
+  }
+
+  return (
+    icon: Icons.nightlight_round,
+    cor: BrutColors.statusNormal,
+    titulo: 'Operando no piso de 50%',
+    detalhe: 'Nenhum veículo na via. A luz sobe para 100% quando o sensor '
+        '360° detectar aproximação.',
+  );
+}
+
 /// Texto contextual dinâmico (PRD §5.2): evento de veículo detectado, aviso de
 /// telemetria ausente com abertura de chamado, ou operação no piso.
 class TextoContextual extends StatelessWidget {
@@ -14,70 +80,9 @@ class TextoContextual extends StatelessWidget {
   final Poste poste;
   final List<EventoSensor>? eventos;
 
-  ({IconData icon, Color cor, String titulo, String detalhe}) _conteudo() {
-    if (poste.status == StatusPoste.falhaOffline) {
-      final ultima = poste.ultimaLeituraEm;
-      return (
-        icon: Icons.wifi_off,
-        cor: BrutColors.statusFalha,
-        titulo: 'Telemetria ausente',
-        detalhe: ultima == null
-            ? 'Sem leitura válida registrada. Chamado aberto automaticamente.'
-            : 'Última leitura válida em ${Fmt.dataHora(ultima)} '
-                '(${Fmt.desde(ultima)}). Chamado aberto automaticamente.',
-      );
-    }
-
-    if (poste.status == StatusPoste.manutencao) {
-      return (
-        icon: Icons.build,
-        cor: BrutColors.statusManutencao,
-        titulo: 'Em manutenção',
-        detalhe: 'Luminosidade desligada. Status atribuído manualmente pelo '
-            'técnico.',
-      );
-    }
-
-    final ultimoEvento =
-        (eventos != null && eventos!.isNotEmpty) ? eventos!.first : null;
-
-    if (ultimoEvento != null &&
-        ultimoEvento.tipo == TipoEventoSensor.veiculoDetectado &&
-        poste.luminosidadeAtual >= 99) {
-      final sentido = ultimoEvento.sentido;
-      final dir = sentido == null
-          ? ''
-          : ' ${sentido == SentidoVeiculo.aproximando ? 'se aproximando' : 'se afastando'}';
-      return (
-        icon: Icons.directions_car,
-        cor: BrutColors.statusAtencao,
-        titulo: 'Veículo detectado$dir',
-        detalhe: 'Sensor 360° elevou a luminosidade para 100% às '
-            '${Fmt.hora(ultimoEvento.timestamp)}.',
-      );
-    }
-
-    if (poste.status == StatusPoste.consumoAlto) {
-      return (
-        icon: Icons.trending_up,
-        cor: BrutColors.statusAtencao,
-        titulo: 'Consumo acima da média',
-        detalhe: 'Consumo acima da média do trecho nas últimas 24 h.',
-      );
-    }
-
-    return (
-      icon: Icons.nightlight_round,
-      cor: BrutColors.statusNormal,
-      titulo: 'Operando no piso de 50%',
-      detalhe: 'Nenhum veículo na via. A luz sobe para 100% quando o sensor '
-          '360° detectar aproximação.',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final c = _conteudo();
+    final c = notaContextual(poste, eventos);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(BrutSpacing.md),

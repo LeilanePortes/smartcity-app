@@ -28,17 +28,21 @@ class HomeShell extends ConsumerWidget {
     final index = _tabs.indexWhere((t) => t.tab == tab);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Iluminação Pública',
-                style: BrutType.sans(16, weight: FontWeight.w700)),
-            Text('ITAGUARI · GO', style: BrutType.label(10)),
-          ],
-        ),
-      ),
+      // A tela de Mapa traz o próprio cabeçalho (fidelidade ao design aprovado);
+      // as demais abas usam a barra padrão do app.
+      appBar: tab == HomeTab.mapa
+          ? null
+          : AppBar(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Iluminação Pública',
+                      style: BrutType.sans(16, weight: FontWeight.w700)),
+                  Text('ITAGUARI · GO', style: BrutType.label(10)),
+                ],
+              ),
+            ),
       body: IndexedStack(
         index: index,
         children: [for (final t in _tabs) t.screen],

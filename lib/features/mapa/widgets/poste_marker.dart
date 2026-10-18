@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/brut_colors.dart';
 import '../../../shared/models/models.dart';
 
-/// Marcador de poste no mapa — quadrado de borda dura preenchido com a cor do
-/// status (PRD §5.1). Quando selecionado, ganha um anel de acento.
+/// Marcador de poste no mapa (PRD §5.1): quadrado de borda dura, branco (ou
+/// tinta quando selecionado), com o ponto de status no centro.
 class PosteMarker extends StatelessWidget {
   const PosteMarker({
     super.key,
@@ -22,13 +22,22 @@ class PosteMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = Container(
-      width: selecionado ? 20 : 14,
-      height: selecionado ? 20 : 14,
+      width: 26,
+      height: 26,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: status.color,
+        color: selecionado ? BrutColors.ink : BrutColors.surface,
         border: Border.all(
-          color: selecionado ? BrutColors.accent : BrutColors.ink,
-          width: selecionado ? 3 : 2,
+          color: selecionado ? BrutColors.ink : BrutColors.lineSoft,
+          width: selecionado ? 2 : 1,
+        ),
+      ),
+      child: Container(
+        width: selecionado ? 10 : 8,
+        height: selecionado ? 10 : 8,
+        decoration: BoxDecoration(
+          color: status.color,
+          shape: BoxShape.circle,
         ),
       ),
     );

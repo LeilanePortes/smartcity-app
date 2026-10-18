@@ -12,6 +12,9 @@ class SmartcityApp extends StatelessWidget {
       title: 'Iluminação Pública Inteligente',
       debugShowCheckedModeBanner: false,
       theme: BrutTheme.build(),
+      // O design system BRUT existe só na variante clara — o app não herda o
+      // dark mode do sistema operacional do dispositivo.
+      themeMode: ThemeMode.light,
       home: const HomeShell(),
     );
   }

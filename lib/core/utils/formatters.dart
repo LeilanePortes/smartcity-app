@@ -12,6 +12,12 @@ abstract final class Fmt {
 
   static String moeda(num v) => _reais.format(v);
 
+  /// Valor em reais sem o símbolo (para exibir "R$" separado do número).
+  static String reais(num v) => _decimal(v, 2);
+
+  /// Número decimal pt-BR sem unidade (ex.: ranking em kWh, coluna sem sufixo).
+  static String decimal(num v, {int casas = 1}) => _decimal(v, casas);
+
   static String _decimal(num v, int casas) =>
       NumberFormat.decimalPatternDigits(locale: 'pt_BR', decimalDigits: casas)
           .format(v);

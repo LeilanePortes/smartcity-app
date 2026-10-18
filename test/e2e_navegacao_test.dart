@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:smartcity_app/app.dart';
 import 'package:smartcity_app/core/realtime/realtime_client.dart';
 import 'package:smartcity_app/core/realtime/realtime_providers.dart';
+import 'package:smartcity_app/features/mapa/widgets/poste_marker.dart';
 import 'package:smartcity_app/shared/data/smartcity_api.dart';
 
 import 'support/fake_smartcity_api.dart';
@@ -40,15 +41,15 @@ void main() {
     expect(find.text('POSTES'), findsOneWidget);
 
     // Abre o bottom sheet do primeiro poste tocando no marcador.
-    final marcador = find.byType(GestureDetector).first;
+    final marcador = find.byType(PosteMarker).first;
     await tester.tap(marcador, warnIfMissed: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Ver detalhe do poste'.toUpperCase()), findsOneWidget);
+    expect(find.text('Ver detalhe do poste'), findsOneWidget);
 
     // Vai para o detalhe.
-    await tester.tap(find.text('VER DETALHE DO POSTE'));
+    await tester.tap(find.text('Ver detalhe do poste'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -72,8 +73,8 @@ void main() {
     await tester.tap(find.text('KPIs'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text('MAIOR CONSUMO · TOP 5'), findsOneWidget);
-    expect(find.text('DISTRIBUIÇÃO POR STATUS'), findsOneWidget);
+    expect(find.text('MAIOR CONSUMO'), findsOneWidget);
+    expect(find.text('POSTES POR STATUS'), findsOneWidget);
 
     // Toque no item do ranking abre o detalhe do poste.
     await tester.tap(find.text('P-002').first);
@@ -81,8 +82,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Rua Anhanguera, 112'), findsWidgets);
 
-    // Volta e vai para a galeria do design system.
-    await tester.pageBack();
+    // Volta (o detalhe traz o próprio botão de voltar, sem AppBar) e vai para
+    // a galeria do design system.
+    await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

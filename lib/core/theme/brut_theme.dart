@@ -17,6 +17,10 @@ abstract final class BrutTheme {
       borderSide: BorderSide(color: BrutColors.line, width: BrutStroke.regular),
     );
 
+    // Shape reto reutilizado pelos componentes padrão do Material 3 que, sem
+    // override explícito, cairiam no radius arredondado default.
+    const shapeReto = RoundedRectangleBorder(borderRadius: BorderRadius.zero);
+
     return base.copyWith(
       scaffoldBackgroundColor: BrutColors.paper,
       canvasColor: BrutColors.paper,
@@ -68,9 +72,22 @@ abstract final class BrutTheme {
         fillColor: BrutColors.surface,
         border: border,
         enabledBorder: border,
+        disabledBorder: border,
+        errorBorder: border.copyWith(
+          borderSide: const BorderSide(
+            color: BrutColors.statusFalha,
+            width: BrutStroke.regular,
+          ),
+        ),
         focusedBorder: border.copyWith(
           borderSide: const BorderSide(
             color: BrutColors.accent,
+            width: BrutStroke.bold,
+          ),
+        ),
+        focusedErrorBorder: border.copyWith(
+          borderSide: const BorderSide(
+            color: BrutColors.statusFalha,
             width: BrutStroke.bold,
           ),
         ),
@@ -79,6 +96,30 @@ abstract final class BrutTheme {
           vertical: BrutSpacing.md,
         ),
         hintStyle: BrutType.sans(14, color: BrutColors.inkMuted),
+      ),
+      // Chips (ex.: filtros de status do Mapa) — radius 0, borda dura.
+      chipTheme: ChipThemeData(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: BrutColors.line, width: BrutStroke.regular),
+        ),
+        side: const BorderSide(color: BrutColors.line, width: BrutStroke.regular),
+        backgroundColor: BrutColors.surface,
+        selectedColor: BrutColors.ink,
+        checkmarkColor: BrutColors.paper,
+        showCheckmark: false,
+        labelStyle: BrutType.sans(12),
+        secondaryLabelStyle: BrutType.sans(12),
+      ),
+      dialogTheme: const DialogThemeData(shape: shapeReto),
+      popupMenuTheme: const PopupMenuThemeData(shape: shapeReto),
+      menuTheme: const MenuThemeData(
+        style: MenuStyle(
+          shape: WidgetStatePropertyAll(shapeReto),
+        ),
+      ),
+      tooltipTheme: const TooltipThemeData(
+        decoration: BoxDecoration(color: BrutColors.ink),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: BrutColors.ink,

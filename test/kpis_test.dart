@@ -131,10 +131,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('MAIOR CONSUMO · TOP 5'), findsOneWidget);
+    expect(find.text('MAIOR CONSUMO'), findsOneWidget);
     expect(find.text('P-034'), findsOneWidget);
     expect(find.textContaining('B4a'), findsOneWidget);
-    expect(find.text('248'), findsOneWidget);
+    expect(find.text('POSTES POR STATUS'), findsOneWidget);
+    expect(find.text('231'), findsOneWidget);
     expect(find.textContaining('−5,4%'), findsWidgets);
   });
 

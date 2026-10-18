@@ -152,6 +152,7 @@ class ItemRanking {
     required this.bairro,
     required this.consumoKwh,
     required this.custoReais,
+    this.status,
   });
 
   final int posicao;
@@ -162,6 +163,9 @@ class ItemRanking {
   final double consumoKwh;
   final double custoReais;
 
+  /// Status do poste, quando a API o inclui no ranking (`null` = não informado).
+  final StatusPoste? status;
+
   factory ItemRanking.fromJson(Json j) => ItemRanking(
         posicao: asInt(j['posicao']),
         posteId: j['posteId'] as String,
@@ -170,6 +174,9 @@ class ItemRanking {
         bairro: j['bairro'] as String,
         consumoKwh: asDouble(j['consumoKwh']),
         custoReais: asDouble(j['custoReais']),
+        status: j['status'] == null
+            ? null
+            : StatusPoste.fromWire(j['status'] as String),
       );
 }
 

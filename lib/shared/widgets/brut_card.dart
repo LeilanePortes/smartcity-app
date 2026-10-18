@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/brut_colors.dart';
 import '../../core/theme/brut_spacing.dart';
 
-/// Card brutalista: borda dura 2px, radius 0, sem sombra.
+/// Card do design aprovado: hairline de 1px (`lineSoft`), radius 0, sem sombra.
 /// Opcionalmente clicável e com uma faixa de acento à esquerda (status).
 class BrutCard extends StatelessWidget {
   const BrutCard({
@@ -26,15 +26,12 @@ class BrutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final border = accent == null
-        ? Border.all(color: BrutColors.line, width: BrutStroke.regular)
+        ? Border.all(color: BrutColors.lineSoft, width: 1)
         : Border(
-            top: const BorderSide(
-                color: BrutColors.line, width: BrutStroke.regular),
-            right: const BorderSide(
-                color: BrutColors.line, width: BrutStroke.regular),
-            bottom: const BorderSide(
-                color: BrutColors.line, width: BrutStroke.regular),
-            left: BorderSide(color: accent!, width: 6),
+            top: const BorderSide(color: BrutColors.lineSoft, width: 1),
+            right: const BorderSide(color: BrutColors.lineSoft, width: 1),
+            bottom: const BorderSide(color: BrutColors.lineSoft, width: 1),
+            left: BorderSide(color: accent!, width: 4),
           );
 
     final content = Container(

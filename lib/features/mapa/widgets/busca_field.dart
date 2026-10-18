@@ -45,6 +45,11 @@ class _BuscaFieldState extends ConsumerState<BuscaField> {
   @override
   Widget build(BuildContext context) {
     final temTexto = _controller.text.isNotEmpty;
+    // Hairline tênue do design aprovado (o tema global usa traço de tinta).
+    const borda = OutlineInputBorder(
+      borderRadius: BorderRadius.zero,
+      borderSide: BorderSide(color: BrutColors.lineSoft, width: 1),
+    );
     return TextField(
       controller: _controller,
       onChanged: _onChanged,
@@ -52,7 +57,8 @@ class _BuscaFieldState extends ConsumerState<BuscaField> {
       style: BrutType.sans(14),
       decoration: InputDecoration(
         hintText: 'Buscar rua ou bairro',
-        prefixIcon: const Icon(Icons.search, color: BrutColors.ink, size: 20),
+        prefixIcon:
+            const Icon(Icons.search, color: BrutColors.inkMuted, size: 20),
         suffixIcon: temTexto
             ? IconButton(
                 icon: const Icon(Icons.close, size: 18),
@@ -60,6 +66,12 @@ class _BuscaFieldState extends ConsumerState<BuscaField> {
               )
             : null,
         isDense: true,
+        border: borda,
+        enabledBorder: borda,
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: BrutColors.ink, width: 1.5),
+        ),
       ),
     );
   }

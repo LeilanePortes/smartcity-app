@@ -7,96 +7,59 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/widgets.dart';
 
-/// Cards de consumo total e custo total, com variação % frente ao período
-/// anterior equivalente (PRD §5.3). Rodapé com a tarifa vigente e o parcial
-/// do dia corrente (fora da comparação).
+/// Cards de consumo total e custo total, empilhados em largura total, com a
+/// variação % frente ao período anterior equivalente e a tarifa vigente no
+/// rodapé do card de custo (PRD §5.3 · design aprovado).
 class KpiTotais extends StatelessWidget {
   const KpiTotais({super.key, required this.kpis});
 
   final KpisResumo kpis;
 
+  String get _periodoLabel => kpis.periodo.label;
+
+  String get _periodoAnterior => switch (kpis.periodo) {
+        PeriodoKpi.dia => 'ontem',
+        PeriodoKpi.semana => 'semana anterior',
+        PeriodoKpi.mes => 'mês anterior',
+        PeriodoKpi.ano => 'ano anterior',
+      };
+
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        IntrinsicHeight(
-          child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: StatCard(
-                label: 'Consumo · ${kpis.periodo.label}',
-                value: Fmt.inteiro(kpis.atual.consumoKwh.round()),
-                unit: 'kWh',
-                deltaLabel: Fmt.percentualVariacao(kpis.variacaoConsumoPct),
-                deltaValue: kpis.variacaoConsumoPct,
-              ),
-            ),
-            const SizedBox(width: BrutSpacing.md),
-            Expanded(
-              child: StatCard(
-                label: 'Custo · ${kpis.periodo.label}',
-                value: Fmt.moeda(kpis.atual.custoReais),
-                deltaLabel: Fmt.percentualVariacao(kpis.variacaoCustoPct),
-                deltaValue: kpis.variacaoCustoPct,
-                emphasis: true,
-              ),
-            ),
-          ],
-          ),
+        StatCard(
+          label: 'Consumo total · $_periodoLabel',
+          value: Fmt.inteiro(kpis.atual.consumoKwh.round()),
+          unit: 'kWh',
+          deltaLabel: Fmt.percentualVariacao(kpis.variacaoConsumoPct),
+          deltaValue: kpis.variacaoConsumoPct,
+          deltaContexto: 'vs. $_periodoAnterior',
         ),
-        const SizedBox(height: BrutSpacing.sm),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(BrutSpacing.md),
-          decoration: BoxDecoration(
-            color: BrutColors.surface,
-            border:
-                Border.all(color: BrutColors.line, width: BrutStroke.regular),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('TARIFA', style: BrutType.label(10)),
-                  const SizedBox(width: BrutSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '${kpis.tarifa.classe} · ${kpis.tarifa.descricao}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: BrutType.sans(12),
-                    ),
+        const SizedBox(height: BrutSpacing.md),
+        StatCard(
+          label: 'Custo total · $_periodoLabel',
+          value: Fmt.reais(kpis.atual.custoReais),
+          unit: r'R$',
+          unitLeading: true,
+          deltaLabel: Fmt.percentualVariacao(kpis.variacaoCustoPct),
+          deltaValue: kpis.variacaoCustoPct,
+          deltaContexto: 'vs. $_periodoAnterior',
+          footer: Text.rich(
+            TextSpan(
+              text: 'Tarifa ${kpis.tarifa.classe} ${kpis.tarifa.descricao}: ',
+              children: [
+                TextSpan(
+                  text: '${Fmt.moeda(kpis.tarifa.valorKwh)}/kWh',
+                  style: BrutType.mono(
+                    12,
+                    weight: FontWeight.w700,
+                    color: BrutColors.ink,
                   ),
-                  const SizedBox(width: BrutSpacing.sm),
-                  Text(
-                    '${Fmt.moeda(kpis.tarifa.valorKwh)}/kWh',
-                    style: BrutType.mono(12, weight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              const Divider(height: BrutStroke.regular),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Text('HOJE ATÉ AGORA', style: BrutType.label(10)),
-                  const SizedBox(width: BrutSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '${Fmt.kwh(kpis.parcialHoje.consumoKwh)}  ·  '
-                      '${Fmt.moeda(kpis.parcialHoje.custoReais)}',
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: BrutType.mono(12, color: BrutColors.inkMuted),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ],

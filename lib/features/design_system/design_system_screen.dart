@@ -130,9 +130,8 @@ class _DesignSystemScreenState extends State<DesignSystemScreen> {
               child: StatCard(
                 label: 'Custo total',
                 value: 'R\$ 6.203',
-                deltaLabel: '−5,4%',
-                deltaValue: -5.4,
-                emphasis: true,
+                deltaLabel: '+3,1%',
+                deltaValue: 3.1,
               ),
             ),
           ],

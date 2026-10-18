@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/brut_colors.dart';
 import '../../../core/theme/brut_typography.dart';
 
-/// Barra de luminosidade 0–100% com marcação do piso operacional (50%, PRD §5.2).
+/// Barra de luminosidade 0–100% com marcação do piso operacional (50%, PRD §5.2),
+/// conforme o design aprovado: trilho tênue, preenchimento em `destaque` e um
+/// traço de tinta no piso.
 class LuminosidadeBar extends StatelessWidget {
   const LuminosidadeBar({
     super.key,
@@ -19,7 +21,6 @@ class LuminosidadeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = (valor.clamp(0, 100)) / 100;
-    final noPico = valor >= 99;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,7 +33,7 @@ class LuminosidadeBar extends StatelessWidget {
             const Spacer(),
             Text(
               desligado ? 'DESLIGADO' : '${valor.toStringAsFixed(0)}%',
-              style: BrutType.mono(16, weight: FontWeight.w700),
+              style: BrutType.mono(15, weight: FontWeight.w600),
             ),
           ],
         ),
@@ -41,35 +42,31 @@ class LuminosidadeBar extends StatelessWidget {
           builder: (context, c) {
             final w = c.maxWidth;
             return SizedBox(
-              height: 22,
+              height: 10,
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  // Trilho
-                  Container(
-                    decoration: BoxDecoration(
-                      color: BrutColors.paper,
-                      border: Border.all(
-                        color: BrutColors.line,
-                        width: 2,
-                      ),
-                    ),
+                  // Trilho.
+                  const Positioned.fill(
+                    child: ColoredBox(color: BrutColors.lineSoft),
                   ),
-                  // Preenchimento
+                  // Preenchimento.
                   if (!desligado)
-                    FractionallySizedBox(
-                      widthFactor: pct,
-                      child: Container(
-                        color: noPico
-                            ? BrutColors.lumAlta
-                            : BrutColors.statusManutencaoSoft,
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: SizedBox(
+                        width: w * pct,
+                        child: const ColoredBox(color: BrutColors.destaque),
                       ),
                     ),
-                  // Marcação do piso (50%)
+                  // Marcação do piso.
                   Positioned(
-                    left: (w * (piso / 100)).clamp(0, w) - 1,
+                    left: (w * (piso / 100)).clamp(0, w) - 0.5,
                     top: -3,
                     bottom: -3,
-                    child: Container(width: 2, color: BrutColors.accent),
+                    child: Container(width: 1, color: BrutColors.ink),
                   ),
                 ],
               ),
@@ -78,16 +75,12 @@ class LuminosidadeBar extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.arrow_drop_up, size: 14, color: BrutColors.accent),
-            Text(
-              'piso ${piso.toStringAsFixed(0)}%',
-              style: BrutType.sans(10, color: BrutColors.inkMuted),
-            ),
-            const Spacer(),
-            if (noPico && !desligado)
-              Text('pico 100%',
-                  style: BrutType.sans(10, color: BrutColors.inkMuted)),
+            Text('0%', style: BrutType.mono(9, color: BrutColors.inkMuted)),
+            Text('BASE ${piso.toStringAsFixed(0)}%',
+                style: BrutType.mono(9, color: BrutColors.inkMuted)),
+            Text('100%', style: BrutType.mono(9, color: BrutColors.inkMuted)),
           ],
         ),
       ],

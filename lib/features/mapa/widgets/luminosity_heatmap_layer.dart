@@ -2,8 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 import '../../../core/theme/brut_colors.dart';
+import '../../../core/theme/brut_spacing.dart';
+import '../../../core/theme/brut_typography.dart';
 import '../../../shared/models/models.dart';
 import '../mapa_geo.dart';
+
+/// Fonte única do gradiente do heatmap de luminosidade.
+///
+/// Escala de luminosidade do PRD §5.1: azul-escuro no piso de 50% → amarelo no
+/// pico de 100%. Alimenta tanto os borrões da camada [LuminosityHeatmapLayer]
+/// quanto o widget [HeatmapLegenda] — os dois nunca devem divergir entre si.
+abstract final class HeatmapGradiente {
+  static const double _lumPiso = 50;
+
+  /// Fração 0–1 da escala para uma luminosidade [lum] (0–100).
+  static double _t(double lum) =>
+      ((lum - _lumPiso) / (100 - _lumPiso)).clamp(0.0, 1.0);
+
+  /// Cor cheia do borrão para uma luminosidade [lum]. A camada aplica a
+  /// opacidade e o [BlendMode.plus] que fazem os borrões se acumularem.
+  static Color corPara(double lum) =>
+      Color.lerp(BrutColors.lumBaixa, BrutColors.lumAlta, _t(lum))!;
+
+  /// Faixa 50% → 100% para a legenda (mesma escala da camada).
+  static const LinearGradient legenda = LinearGradient(
+    colors: [BrutColors.lumBaixa, BrutColors.lumMedia, BrutColors.lumAlta],
+  );
+}
 
 /// Camada de heatmap de luminosidade (PRD §5.1) desenhada por cima do mapa.
 ///
@@ -54,9 +79,7 @@ class _HeatPainter extends CustomPainter {
         continue;
       }
 
-      final t = ((p.luminosidadeAtual - 50) / 50).clamp(0.0, 1.0);
-      final cor = Color.lerp(BrutColors.lumBaixa, BrutColors.lumAlta, t)!;
-
+      final cor = HeatmapGradiente.corPara(p.luminosidadeAtual);
       final paint = Paint()
         ..blendMode = BlendMode.plus
         ..shader = RadialGradient(
@@ -76,45 +99,45 @@ class _HeatPainter extends CustomPainter {
       !identical(old.postes, postes);
 }
 
-/// Legenda 50% → 100% para acompanhar o heatmap.
+/// Legenda 50% → 100% para acompanhar o heatmap. Usa a mesma [HeatmapGradiente]
+/// da camada, então nunca desalinha da rampa desenhada no mapa.
 class HeatmapLegenda extends StatelessWidget {
   const HeatmapLegenda({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: BrutColors.surface,
-        border: Border.all(color: BrutColors.line, width: 2),
+        border: Border.all(color: BrutColors.line, width: BrutStroke.regular),
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('LUMINOSIDADE',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: BrutColors.inkMuted,
-              )),
-          const SizedBox(width: 8),
-          const Text('50%', style: TextStyle(fontSize: 10)),
-          const SizedBox(width: 4),
+          Text('LUMINOSIDADE', style: BrutType.label(9)),
+          const SizedBox(height: 6),
           Container(
-            width: 64,
+            width: 84,
             height: 8,
-            decoration: const BoxDecoration(
-              border: Border.fromBorderSide(
-                BorderSide(color: BrutColors.line, width: 1),
-              ),
-              gradient: LinearGradient(
-                colors: [BrutColors.lumBaixa, BrutColors.lumMedia, BrutColors.lumAlta],
-              ),
+            decoration: BoxDecoration(
+              border: Border.all(color: BrutColors.line, width: 1),
+              gradient: HeatmapGradiente.legenda,
             ),
           ),
-          const SizedBox(width: 4),
-          const Text('100%', style: TextStyle(fontSize: 10)),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 84,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('50%', style: BrutType.mono(9, color: BrutColors.inkMuted)),
+                Text('100%',
+                    style: BrutType.mono(9, color: BrutColors.inkMuted)),
+              ],
+            ),
+          ),
         ],
       ),
     );
