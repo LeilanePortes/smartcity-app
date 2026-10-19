@@ -58,6 +58,16 @@ Trilha independente, iniciada somente após o marco de conclusão da trilha de b
 - [ ] Alertas recentes do fog com acesso ao detalhe do poste.
 - [ ] Aviso de modo de reserva (`modo: "interno"`) e consulta periódica (12 s) enquanto a aba estiver aberta.
 
+## Fase 8 · OTA com grupo canário
+
+- [ ] Seção "OTA · Grupo canário" na aba Arquitetura consumindo `GET /ota`.
+- [ ] Versões de firmware em campo (barra empilhada + chips).
+- [ ] Implantação por versão do catálogo (`POST /ota/implantacoes`) e reversão da frota (`POST /ota/reverter`), com confirmação e mensagens de erro 400/409 da API.
+- [ ] Implantação atual: status, ondas 5% → 25% → 50% → 100%, contadores de aparelhos e próxima avaliação.
+- [ ] Canário × controle: consumo normalizado e razão frente ao limite dos critérios.
+- [ ] Histórico de decisões dos portões e falhas de instalação.
+- [ ] Consulta a cada 5 s com implantação em andamento e a cada 15 s parada, só com a aba aberta.
+
 ## Marco de conclusão
 
 A trilha mobile é considerada completa quando as três telas estão navegáveis, consumindo os dados reais da API mockada do backend (não mais dados estáticos locais), com atualização em tempo real funcional e consistência visual validada contra o design aprovado.
