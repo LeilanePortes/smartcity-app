@@ -5,7 +5,8 @@ import '../../../shared/models/models.dart';
 /// Raio, em pixels de tela, dentro do qual os postes entram no mesmo grupo.
 const double kRaioAgrupamentoPx = 44;
 
-/// Lado visual da bolha e do marcador individual (sem a área de toque).
+/// Diâmetro visual da bolha e tamanho padrão de um poste individual (sem a
+/// área de toque). A camada passa o diâmetro real do ponto no zoom atual.
 const double kTamanhoBolhaPx = 38;
 const double kTamanhoMarcadorPx = 26;
 
@@ -23,7 +24,8 @@ int gravidadeStatus(StatusPoste s) => switch (s) {
 
 /// Um item da camada de marcadores: um poste individual ou uma bolha.
 class GrupoPostes {
-  GrupoPostes._(this.postes, this.centro);
+  GrupoPostes._(this.postes, this.centro, double tamanhoIndividual)
+      : _tamanhoIndividual = tamanhoIndividual;
 
   final List<PosteResumo> postes;
 
@@ -41,7 +43,9 @@ class GrupoPostes {
   int get comProblema =>
       postes.where((p) => p.status != StatusPoste.normal).length;
 
-  double get tamanho => individual ? kTamanhoMarcadorPx : kTamanhoBolhaPx;
+  final double _tamanhoIndividual;
+
+  double get tamanho => individual ? _tamanhoIndividual : kTamanhoBolhaPx;
 }
 
 /// Agrupa postes por distância na tela, sem depender do zoom:
@@ -51,10 +55,12 @@ class GrupoPostes {
 /// 2. Fusão: enquanto dois itens (bolha ou marcador) se sobrepõem — contando o
 ///    tamanho de cada um e [kFolgaAgrupamentoPx] —, viram um só.
 ///
-/// O resultado não tem itens sobrepostos.
+/// O resultado não tem itens sobrepostos. [tamanhoIndividual] é o lado/diâmetro
+/// de um poste sozinho na tela (o ponto no zoom atual).
 List<GrupoPostes> agruparPorDistancia(
   List<(PosteResumo, Offset)> itens, {
   double raio = kRaioAgrupamentoPx,
+  double tamanhoIndividual = kTamanhoMarcadorPx,
 }) {
   // 1. Guloso.
   final grupos = <_Acumulador>[];
@@ -62,7 +68,7 @@ List<GrupoPostes> agruparPorDistancia(
   for (var i = 0; i < itens.length; i++) {
     if (usado[i]) continue;
     usado[i] = true;
-    final g = _Acumulador()..add(itens[i]);
+    final g = _Acumulador(tamanhoIndividual)..add(itens[i]);
     for (var j = i + 1; j < itens.length; j++) {
       if (usado[j]) continue;
       if ((itens[j].$2 - itens[i].$2).distance <= raio) {
@@ -91,7 +97,10 @@ List<GrupoPostes> agruparPorDistancia(
     if (!fundiu) i++;
   }
 
-  return [for (final g in grupos) GrupoPostes._(g.postes, g.centro)];
+  return [
+    for (final g in grupos)
+      GrupoPostes._(g.postes, g.centro, tamanhoIndividual),
+  ];
 }
 
 bool _sobrepoe(_Acumulador a, _Acumulador b) {
@@ -101,6 +110,9 @@ bool _sobrepoe(_Acumulador a, _Acumulador b) {
 }
 
 class _Acumulador {
+  _Acumulador(this._tamanhoIndividual);
+
+  final double _tamanhoIndividual;
   final postes = <PosteResumo>[];
   var _soma = Offset.zero;
 
@@ -117,5 +129,5 @@ class _Acumulador {
   Offset get centro => _soma / postes.length.toDouble();
 
   double get tamanho =>
-      postes.length == 1 ? kTamanhoMarcadorPx : kTamanhoBolhaPx;
+      postes.length == 1 ? _tamanhoIndividual : kTamanhoBolhaPx;
 }
