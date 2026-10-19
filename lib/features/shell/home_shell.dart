@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/brut_colors.dart';
 import '../../core/theme/brut_spacing.dart';
 import '../../core/theme/brut_typography.dart';
+import '../arquitetura/arquitetura_screen.dart';
 import '../design_system/design_system_screen.dart';
 import '../kpis/kpis_screen.dart';
 import '../mapa/mapa_screen.dart';
@@ -18,6 +19,8 @@ class HomeShell extends ConsumerWidget {
   static const _tabs = <_TabDef>[
     _TabDef(HomeTab.mapa, 'Mapa', Icons.map_outlined, MapaScreen()),
     _TabDef(HomeTab.kpis, 'KPIs', Icons.bar_chart_outlined, KpisScreen()),
+    _TabDef(HomeTab.arquitetura, 'Arquitetura', Icons.hub_outlined,
+        ArquiteturaScreen()),
     _TabDef(HomeTab.design, 'Design', Icons.grid_view_outlined,
         DesignSystemScreen()),
   ];

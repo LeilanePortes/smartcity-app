@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Abas da casca de navegação.
-enum HomeTab { mapa, kpis, design }
+enum HomeTab { mapa, kpis, arquitetura, design }
 
 /// Aba ativa do [HomeShell]. Compartilhada para permitir que ações como
 /// "Ver no mapa" (detalhe do poste) troquem de aba.
