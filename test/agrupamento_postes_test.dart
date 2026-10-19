@@ -64,6 +64,16 @@ void main() {
     expect(g.single.postes, hasLength(3));
   });
 
+  test('tamanho do item individual entra na regra de fusão', () {
+    // Bolha centrada em x = 20; 'c' a 30 px dela (e a 50 px de 'a').
+    final itens = [_em('a', 0, 0), _em('b', 40, 0), _em('c', 50, 0)];
+
+    // Item de 26 px: limite (38 + 26) / 2 + 4 = 36 > 30 → funde.
+    expect(agruparPorDistancia(itens), hasLength(1));
+    // Ponto de 8 px: limite (38 + 8) / 2 + 4 = 27 < 30 → fica separado.
+    expect(agruparPorDistancia(itens, tamanhoIndividual: 8), hasLength(2));
+  });
+
   test('rede densa: nenhum item sobreposto e nenhum poste perdido', () {
     final rnd = Random(42);
     final itens = [

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:smartcity_app/app.dart';
 import 'package:smartcity_app/core/realtime/realtime_client.dart';
 import 'package:smartcity_app/core/realtime/realtime_providers.dart';
-import 'package:smartcity_app/features/mapa/widgets/poste_marker.dart';
 import 'package:smartcity_app/shared/data/smartcity_api.dart';
 
 import 'support/fake_smartcity_api.dart';
@@ -40,9 +40,9 @@ void main() {
     // Começa no mapa, com o contador de postes.
     expect(find.text('POSTES'), findsOneWidget);
 
-    // Abre o bottom sheet do primeiro poste tocando no marcador.
-    final marcador = find.byType(PosteMarker).first;
-    await tester.tap(marcador, warnIfMissed: false);
+    // Abre o bottom sheet tocando no ponto do P-001, que o fake coloca no
+    // centro do mapa (os pontos são desenhados por um único painter).
+    await tester.tapAt(tester.getCenter(find.byType(FlutterMap)));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

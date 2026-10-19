@@ -5,12 +5,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:smartcity_app/core/theme/brut_theme.dart';
 import 'package:smartcity_app/features/mapa/mapa_geo.dart';
 import 'package:smartcity_app/features/mapa/widgets/poste_cluster_layer.dart';
-import 'package:smartcity_app/features/mapa/widgets/poste_marker.dart';
+import 'package:smartcity_app/features/mapa/widgets/pontos_postes.dart';
 import 'package:smartcity_app/shared/models/models.dart';
 
 const _centro = MapaGeo.centroItaguari;
 
-/// Postes a ~10 m um do outro (≈ 2–3 px no zoom inicial), como na rede real.
+/// Postes a ~11 m um do outro (≈ 3 px no zoom inicial), como na rede real.
+/// O primeiro fica exatamente no centro do mapa.
 List<PosteResumo> _densos(List<StatusPoste> status) => [
       for (var i = 0; i < status.length; i++)
         PosteResumo(
@@ -28,30 +29,39 @@ List<PosteResumo> _densos(List<StatusPoste> status) => [
     ];
 
 void main() {
+  late List<String> selecionados;
+  late List<(LatLng, double)> aproximacoes;
+
+  setUp(() {
+    selecionados = [];
+    aproximacoes = [];
+  });
+
   Future<void> montar(
     WidgetTester tester,
     List<PosteResumo> postes, {
     double zoom = MapaGeo.zoomInicial,
     String? selecionadoId,
-    void Function(LatLng, double)? onAproximar,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: BrutTheme.build(),
         home: Scaffold(
-          body: SizedBox(
-            width: 412,
-            height: 560,
-            child: FlutterMap(
-              options: MapOptions(initialCenter: _centro, initialZoom: zoom),
-              children: [
-                PosteClusterLayer(
-                  postes: postes,
-                  selecionadoId: selecionadoId,
-                  onSelecionar: (_) {},
-                  onAproximar: onAproximar ?? (_, _) {},
-                ),
-              ],
+          body: Center(
+            child: SizedBox(
+              width: 412,
+              height: 560,
+              child: FlutterMap(
+                options: MapOptions(initialCenter: _centro, initialZoom: zoom),
+                children: [
+                  PosteClusterLayer(
+                    postes: postes,
+                    selecionadoId: selecionadoId,
+                    onSelecionar: selecionados.add,
+                    onAproximar: (c, z) => aproximacoes.add((c, z)),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -60,82 +70,116 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('zoom inicial: postes densos viram uma bolha, sem marcadores',
+  List<PontoPoste> pontosDesenhados(WidgetTester tester) =>
+      (tester
+                  .widget<CustomPaint>(
+                      find.byKey(const Key('mapa-pontos-postes')).first)
+                  .painter!
+              as PontosPostesPainter)
+          .pontos;
+
+  Offset centroDoMapa(WidgetTester tester) =>
+      tester.getCenter(find.byType(FlutterMap));
+
+  testWidgets('zoom inicial: todos os postes como pontos, sem bolhas',
       (tester) async {
     await montar(tester, _densos(List.filled(5, StatusPoste.normal)));
 
-    expect(find.byType(PosteClusterBolha), findsOneWidget);
-    expect(find.text('5'), findsOneWidget);
-    expect(find.byType(PosteMarker), findsNothing);
-    // Só normais: sem selo de problema.
-    expect(find.byKey(const Key('bolha-selo-problema')), findsNothing);
+    expect(find.byType(PosteClusterBolha), findsNothing);
+    final pontos = pontosDesenhados(tester);
+    expect(pontos, hasLength(5));
+    expect(pontos.first.diametro, closeTo(diametroBase(MapaGeo.zoomInicial), 1e-9));
   });
 
-  testWidgets('bolha com problema mostra borda e selo do pior status',
+  testWidgets('fora do NORMAL por cima e maiores; selecionado por último',
       (tester) async {
-    await montar(tester, _densos([
-      StatusPoste.normal,
-      StatusPoste.consumoAlto,
-      StatusPoste.normal,
-      StatusPoste.falhaOffline,
-      StatusPoste.normal,
-    ]));
+    await montar(
+      tester,
+      _densos([
+        StatusPoste.falhaOffline,
+        StatusPoste.normal,
+        StatusPoste.consumoAlto,
+        StatusPoste.normal,
+      ]),
+      selecionadoId: 'p1',
+    );
+
+    final pontos = pontosDesenhados(tester);
+    expect(pontos.map((p) => p.poste.id), ['p3', 'p2', 'p0', 'p1']);
+    expect(pontos.last.selecionado, isTrue);
+    expect(pontos[1].diametro, greaterThan(pontos[0].diametro));
+  });
+
+  testWidgets('toque no poste seleciona o mais próximo', (tester) async {
+    await montar(tester, _densos(List.filled(3, StatusPoste.normal)));
+
+    await tester.tapAt(centroDoMapa(tester));
+    expect(selecionados, ['p0']);
+  });
+
+  testWidgets('pontos sobrepostos: o toque prioriza o poste com problema',
+      (tester) async {
+    // p0 (normal) no centro; p1 (falha) a ~3 px.
+    await montar(
+        tester, _densos([StatusPoste.normal, StatusPoste.falhaOffline]));
+
+    await tester.tapAt(centroDoMapa(tester));
+    expect(selecionados, ['p1']);
+  });
+
+  testWidgets('toque longe dos postes não seleciona nada', (tester) async {
+    await montar(tester, _densos(List.filled(3, StatusPoste.normal)));
+
+    await tester.tapAt(centroDoMapa(tester) + const Offset(150, 150));
+    // O toque passa para o próprio mapa, que espera 250 ms por um duplo toque.
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(selecionados, isEmpty);
+  });
+
+  testWidgets('abaixo do zoom 14: bolha circular com selo de problema',
+      (tester) async {
+    await montar(
+      tester,
+      _densos([
+        StatusPoste.normal,
+        StatusPoste.consumoAlto,
+        StatusPoste.normal,
+        StatusPoste.falhaOffline,
+        StatusPoste.normal,
+      ]),
+      zoom: 13.5,
+    );
 
     final bolha =
         tester.widget<PosteClusterBolha>(find.byType(PosteClusterBolha));
     expect(bolha.quantidade, 5);
     expect(bolha.piorStatus, StatusPoste.falhaOffline);
     expect(bolha.comProblema, 2);
-
     final selo = find.byKey(const Key('bolha-selo-problema'));
-    expect(selo, findsOneWidget);
     expect(find.descendant(of: selo, matching: find.text('2')), findsOneWidget);
-    expect(
-      (tester.widget<Container>(selo).decoration! as BoxDecoration).color,
-      StatusPoste.falhaOffline.color,
-    );
+
+    await tester.tap(find.byType(PosteClusterBolha));
+    expect(aproximacoes, hasLength(1));
+    expect(aproximacoes.single.$2, closeTo(13.5, 0.001));
+    expect(aproximacoes.single.$1.latitude,
+        closeTo(_centro.latitude + 0.0002, 1e-9));
   });
 
-  testWidgets('poste selecionado fica fora da bolha', (tester) async {
+  testWidgets('abaixo do zoom 14: o selecionado fica fora da bolha',
+      (tester) async {
     await montar(
       tester,
       _densos(List.filled(5, StatusPoste.normal)),
+      zoom: 13.5,
       selecionadoId: 'p2',
     );
 
-    expect(find.byType(PosteMarker), findsOneWidget);
-    expect(tester.widget<PosteMarker>(find.byType(PosteMarker)).selecionado,
-        isTrue);
     expect(find.text('4'), findsOneWidget);
-  });
-
-  testWidgets('zoom máximo: sempre marcadores individuais', (tester) async {
-    await montar(
-      tester,
-      _densos(List.filled(5, StatusPoste.normal)),
-      zoom: MapaGeo.zoomMax,
-    );
-
-    expect(find.byType(PosteClusterBolha), findsNothing);
-    expect(find.byType(PosteMarker), findsNWidgets(5));
-  });
-
-  testWidgets('toque na bolha pede para aproximar no centro do grupo',
-      (tester) async {
-    LatLng? centro;
-    double? zoomAtual;
-    await montar(
-      tester,
-      _densos(List.filled(3, StatusPoste.normal)),
-      onAproximar: (c, z) {
-        centro = c;
-        zoomAtual = z;
-      },
-    );
-
-    await tester.tap(find.byType(PosteClusterBolha));
-    expect(zoomAtual, closeTo(MapaGeo.zoomInicial, 0.001));
-    expect(centro!.latitude, closeTo(_centro.latitude + 0.0001, 1e-9));
-    expect(centro!.longitude, closeTo(_centro.longitude, 1e-9));
+    final camadas = find.byKey(const Key('mapa-pontos-postes'));
+    final selecionado = (tester.widget<CustomPaint>(camadas.last).painter!
+            as PontosPostesPainter)
+        .pontos;
+    expect(selecionado.single.poste.id, 'p2');
+    expect(selecionado.single.selecionado, isTrue);
   });
 }
