@@ -130,6 +130,36 @@ class SmartcityApi {
     );
     return EstadoArquitetura.fromJson(data);
   }
+
+  /// `GET /ota` — catálogo, versões em campo e implantação atual (ou a última).
+  Future<EstadoOta> ota({CancelToken? cancelToken}) async {
+    final data = await _client.get<Map<String, dynamic>>(
+      '/ota',
+      cancelToken: cancelToken,
+    );
+    return EstadoOta.fromJson(data);
+  }
+
+  /// `POST /ota/implantacoes` — inicia a implantação de [versao] pelo canário.
+  /// `400` versão inválida ou igual à atual · `409` já em andamento / modo interno.
+  Future<EstadoOta> iniciarOta(String versao, {CancelToken? cancelToken}) async {
+    final data = await _client.post<Map<String, dynamic>>(
+      '/ota/implantacoes',
+      body: {'versao': versao},
+      cancelToken: cancelToken,
+    );
+    return EstadoOta.fromJson(data);
+  }
+
+  /// `POST /ota/reverter` — reverte a implantação em andamento.
+  /// `409` se não houver implantação em andamento.
+  Future<EstadoOta> reverterOta({CancelToken? cancelToken}) async {
+    final data = await _client.post<Map<String, dynamic>>(
+      '/ota/reverter',
+      cancelToken: cancelToken,
+    );
+    return EstadoOta.fromJson(data);
+  }
 }
 
 /// Provider da fachada da API.

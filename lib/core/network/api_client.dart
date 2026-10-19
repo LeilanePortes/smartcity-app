@@ -50,6 +50,16 @@ class ApiClient {
     );
   }
 
+  Future<T> post<T>(
+    String path, {
+    Object? body,
+    CancelToken? cancelToken,
+  }) async {
+    return _run<T>(
+      () => _dio.post<T>(path, data: body, cancelToken: cancelToken),
+    );
+  }
+
   Future<T> patch<T>(
     String path, {
     Object? body,

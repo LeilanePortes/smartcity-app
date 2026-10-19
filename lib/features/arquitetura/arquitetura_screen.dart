@@ -11,6 +11,8 @@ import '../../shared/widgets/widgets.dart';
 import '../detalhe_poste/detalhe_poste_screen.dart';
 import '../mapa/mapa_providers.dart';
 import 'arquitetura_providers.dart';
+import 'ota/ota_providers.dart';
+import 'ota/ota_secao.dart';
 import 'widgets/alertas_fog.dart';
 import 'widgets/fluxo_camadas.dart';
 import 'widgets/gateways_fog.dart';
@@ -73,6 +75,7 @@ class _ArquiteturaScreenState extends ConsumerState<ArquiteturaScreen> {
 
   Future<void> _recarregar() async {
     ref.invalidate(arquiteturaProvider);
+    ref.invalidate(otaProvider);
     try {
       await ref.read(arquiteturaProvider.future);
     } catch (_) {
@@ -116,6 +119,8 @@ class _ArquiteturaScreenState extends ConsumerState<ArquiteturaScreen> {
             modoInterno: dados.modoInterno,
             onTapPoste: _abrirPoste,
           ),
+          const SizedBox(height: BrutSpacing.xl),
+          const OtaSecao(),
           const SizedBox(height: BrutSpacing.md),
           _Rodape(
             geradoEm: dados.geradoEm,
