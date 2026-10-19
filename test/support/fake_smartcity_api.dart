@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:smartcity_app/core/network/api_client.dart';
+import 'package:smartcity_app/features/mapa/mapa_geo.dart';
 import 'package:smartcity_app/shared/data/smartcity_api.dart';
 import 'package:smartcity_app/shared/models/models.dart';
 
@@ -9,14 +11,25 @@ class FakeSmartcityApi extends SmartcityApi {
 
   final Map<String, StatusPoste> _statusOverride = {};
 
+  /// ~200 m em latitude (1° ≈ 111 km).
+  static const double _passoLat = 0.0018;
+
+  /// Postes calculados a partir do centro do mapa, ~200 m entre si (≈ 50 px no
+  /// zoom inicial), para aparecerem na tela ao abrir o mapa mesmo que o centro
+  /// mude de novo. Coordenadas fixas antigas ficaram fora da tela quando o
+  /// centro foi para as coordenadas reais de Itaguari.
   static final List<PosteResumo> _postes = [
-    _resumo('a1', 'P-001', 'Avenida Goiás, 100', 'Centro', -15.9535, -49.5928,
-        StatusPoste.normal),
-    _resumo('a2', 'P-002', 'Rua Anhanguera, 112', 'Setor Oeste', -15.9532,
-        -49.5930, StatusPoste.consumoAlto),
-    _resumo('a3', 'P-003', 'Rua Itaguari, 136', 'Centro', -15.9538, -49.5925,
+    _resumo('a1', 'P-001', 'Avenida Goiás, 100', 'Centro',
+        _centro.latitude, _centro.longitude, StatusPoste.normal),
+    _resumo('a2', 'P-002', 'Rua Anhanguera, 112', 'Setor Oeste',
+        _centro.latitude + _passoLat, _centro.longitude,
+        StatusPoste.consumoAlto),
+    _resumo('a3', 'P-003', 'Rua Itaguari, 136', 'Centro',
+        _centro.latitude - _passoLat, _centro.longitude,
         StatusPoste.falhaOffline, consumo: 0, offline: true),
   ];
+
+  static const LatLng _centro = MapaGeo.centroItaguari;
 
   static PosteResumo _resumo(
     String id,
