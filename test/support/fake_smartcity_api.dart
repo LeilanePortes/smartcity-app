@@ -257,7 +257,164 @@ class FakeSmartcityApi extends SmartcityApi {
     if (erroArquitetura != null) throw erroArquitetura!;
     return EstadoArquitetura.fromJson(arquiteturaJson);
   }
+
+  /// Corpo devolvido por `GET /ota` (e pelos POST, depois de aplicados).
+  Map<String, dynamic> otaJson = jsonOtaSemImplantacao();
+
+  /// Se não nulos, os POST lançam estes erros e o estado não muda.
+  Object? erroIniciarOta;
+  Object? erroReverterOta;
+
+  int chamadasOta = 0;
+  int chamadasReverterOta = 0;
+  String? ultimaVersaoIniciada;
+
+  @override
+  Future<EstadoOta> ota({CancelToken? cancelToken}) async {
+    chamadasOta++;
+    return EstadoOta.fromJson(otaJson);
+  }
+
+  @override
+  Future<EstadoOta> iniciarOta(String versao, {CancelToken? cancelToken}) async {
+    if (erroIniciarOta != null) throw erroIniciarOta!;
+    ultimaVersaoIniciada = versao;
+    otaJson = jsonOtaEmAndamento(versao);
+    return EstadoOta.fromJson(otaJson);
+  }
+
+  @override
+  Future<EstadoOta> reverterOta({CancelToken? cancelToken}) async {
+    if (erroReverterOta != null) throw erroReverterOta!;
+    chamadasReverterOta++;
+    otaJson = jsonOtaRevertida();
+    return EstadoOta.fromJson(otaJson);
+  }
 }
+
+List<Map<String, dynamic>> _catalogoOta() => [
+      {'versao': '2.4.1', 'descricao': 'Versão atualmente em campo (estável).'},
+      {
+        'versao': '2.5.0',
+        'descricao': 'Ajustes no sensor 360° e na reconexão MQTT (estável).',
+      },
+      {
+        'versao': '3.0.0',
+        'descricao': 'Novo agrupamento de leituras — DEFEITO: consumo sobe ~80%.',
+      },
+      {
+        'versao': '3.0.1',
+        'descricao': 'Build corrompido — DEFEITO: falha no autoteste.',
+      },
+    ];
+
+Map<String, dynamic> _criteriosOta() => {
+      'ondas': [5, 25, 50, 100],
+      'janelaS': 120,
+      'limiarFalhaInstalacaoPct': 5,
+      'limiarRazaoConsumo': 1.5,
+      'minReportePct': 60,
+      'maxExtensoes': 2,
+    };
+
+/// `GET /ota` sem nenhuma implantação (resposta real com a API recém-subida).
+Map<String, dynamic> jsonOtaSemImplantacao() => {
+      'modo': 'camadas',
+      'catalogo': _catalogoOta(),
+      'versoesEmCampo': {'2.4.1': 246, 'desconhecida': 2},
+      'criterios': _criteriosOta(),
+      'implantacao': null,
+    };
+
+/// Implantação recém-iniciada: canário na 1ª onda, antes do 1º portão.
+Map<String, dynamic> jsonOtaEmAndamento(String versao) => {
+      ...jsonOtaSemImplantacao(),
+      'versoesEmCampo': {'2.4.1': 233, versao: 13, 'desconhecida': 2},
+      'implantacao': {
+        'versao': versao,
+        'versaoAnterior': '2.4.1',
+        'status': 'EM_ANDAMENTO',
+        'iniciadaEm': '2026-10-18T18:43:21.000Z',
+        'encerradaEm': null,
+        'ondas': [5, 25, 50, 100],
+        'ondaAtual': 0,
+        'ondaAtualPct': 5,
+        'proximaAvaliacaoEm': '2026-10-18T18:45:21.000Z',
+        'aparelhos': {
+          'elegiveis': 241,
+          'enviados': 13,
+          'instalados': 11,
+          'falhas': 0,
+          'pendentes': 2,
+          'revertidos': 0,
+        },
+        'grupos': {
+          'canario': ['P-012', 'P-087', 'P-140'],
+          'controle': ['P-069', 'P-175', 'P-153'],
+        },
+        'metricas': null,
+        'falhas': <Map<String, dynamic>>[],
+        'decisoes': <Map<String, dynamic>>[],
+      },
+    };
+
+/// Exemplo da documentação: 3.0.0 revertida no 1º portão por consumo.
+Map<String, dynamic> jsonOtaRevertida() => {
+      ...jsonOtaSemImplantacao(),
+      'versoesEmCampo': {'2.4.1': 231, '3.0.0': 13, 'desconhecida': 4},
+      'implantacao': {
+        'versao': '3.0.0',
+        'versaoAnterior': '2.4.1',
+        'status': 'REVERTIDA',
+        'iniciadaEm': '2026-10-18T18:43:21.000Z',
+        'encerradaEm': '2026-10-18T18:45:26.000Z',
+        'ondas': [5, 25, 50, 100],
+        'ondaAtual': 0,
+        'ondaAtualPct': 5,
+        'proximaAvaliacaoEm': null,
+        'aparelhos': {
+          'elegiveis': 241,
+          'enviados': 13,
+          'instalados': 13,
+          'falhas': 0,
+          'pendentes': 0,
+          'revertidos': 13,
+        },
+        'grupos': {
+          'canario': ['P-012', 'P-087', 'P-140'],
+          'controle': ['P-069', 'P-175', 'P-153'],
+        },
+        'metricas': {
+          'canario': {
+            'aparelhos': 13,
+            'reportaram': 13,
+            'consumoNormalizadoMedio': 0.1814,
+            'consumoAltoPct': 100,
+          },
+          'controle': {
+            'aparelhos': 13,
+            'reportaram': 13,
+            'consumoNormalizadoMedio': 0.0999,
+            'consumoAltoPct': 0,
+          },
+          'referenciaConsumo': 0.0999,
+          'razaoConsumo': 1.82,
+        },
+        'falhas': [
+          {'codigo': 'P-010', 'motivo': 'sem resposta do aparelho'},
+        ],
+        'decisoes': [
+          {
+            'em': '2026-10-18T18:45:26.000Z',
+            'ondaPct': 5,
+            'decisao': 'REVERTER',
+            'motivo':
+                'consumo do canário 1,82× o do grupo de controle (limite 1,50×)',
+            'razaoConsumo': 1.82,
+          },
+        ],
+      },
+    };
 
 /// Payload no formato real de `GET /arquitetura` (modo camadas). O alerta
 /// aponta para o poste `a2` (P-002) do fake, para o toque abrir o detalhe.

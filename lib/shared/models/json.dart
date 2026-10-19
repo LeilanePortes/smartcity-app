@@ -33,3 +33,12 @@ DateTime? asDateOrNull(dynamic v) {
 
 List<Json> asList(dynamic v) =>
     (v as List? ?? const []).cast<Json>();
+
+/// Lista de números (ex.: ondas `[5, 25, 50, 100]`); itens inválidos são ignorados.
+List<int> asListaInt(dynamic v) => v is List
+    ? [for (final x in v) if (x is num) x.toInt()]
+    : const [];
+
+/// Lista de strings (ex.: códigos de postes); itens não-string são ignorados.
+List<String> asListaString(dynamic v) =>
+    v is List ? v.whereType<String>().toList() : const [];
