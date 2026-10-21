@@ -53,9 +53,9 @@ No canto superior direito do Android Studio há um seletor de dispositivos:
 
 ### 3.2. Backend precisa estar no ar
 
-O app consome `http://localhost:3000` (REST + WebSocket). Suba o `smartcity-backend` antes.
+O app consome o servidor `http://localhost:3000`: REST em `/api/v1` (ex.: `/api/v1/postes`) e WebSocket (Socket.IO) em `/tempo-real`, na raiz. Suba o `smartcity-backend` antes.
 
-A URL da API é configurável por `--dart-define=API_BASE_URL=...`:
+O endereço do servidor é configurável por `--dart-define=API_BASE_URL=...`. Informe **só o servidor** (sem `/api/v1`); o app acrescenta a versão da API sozinho:
 
 | Onde o app roda | `API_BASE_URL` |
 |---|---|

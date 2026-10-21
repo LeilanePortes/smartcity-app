@@ -37,7 +37,14 @@ flutter pub get
 flutter run
 ```
 
-A base da API é configurável por `--dart-define`:
+O app consome a **API v1**: as rotas REST ficam em `/api/v1` (ex.:
+`http://localhost:3000/api/v1/postes`) e as listagens respondem paginadas
+(`{ itens, pagina, tamanho, total, totalPaginas }`). O Socket.IO
+(`/tempo-real`) continua na raiz do servidor.
+
+O endereço do servidor é configurável por `--dart-define`. Informe **só o
+servidor**, sem `/api/v1` — o app acrescenta a versão sozinho
+(`AppConfig.apiBaseUrl`):
 
 ```bash
 # Emulador Android (localhost do host = 10.0.2.2)

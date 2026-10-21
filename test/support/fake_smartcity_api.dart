@@ -5,6 +5,15 @@ import 'package:smartcity_app/features/mapa/mapa_geo.dart';
 import 'package:smartcity_app/shared/data/smartcity_api.dart';
 import 'package:smartcity_app/shared/models/models.dart';
 
+/// Envelope v1 com todos os [itens] numa página só.
+Pagina<T> paginaUnica<T>(List<T> itens, {int? total}) => Pagina(
+      itens: itens,
+      pagina: 1,
+      tamanho: itens.length,
+      total: total ?? itens.length,
+      totalPaginas: 1,
+    );
+
 /// API mockada em memória para os testes de widget / navegação.
 class FakeSmartcityApi extends SmartcityApi {
   FakeSmartcityApi() : super(ApiClient(dio: Dio()));
@@ -137,12 +146,14 @@ class FakeSmartcityApi extends SmartcityApi {
   }
 
   @override
-  Future<List<EventoSensor>> eventos(
+  Future<Pagina<EventoSensor>> eventos(
     String id, {
-    int limite = 50,
+    int pagina = 1,
+    int tamanho = 50,
+    Ordenacao<CampoOrdemEventos>? ordenar,
     CancelToken? cancelToken,
   }) async {
-    return [
+    return paginaUnica([
       EventoSensor(
         id: 'e1',
         tipo: TipoEventoSensor.retornoAoPiso,
@@ -150,7 +161,7 @@ class FakeSmartcityApi extends SmartcityApi {
         luminosidadeResultante: 50,
         timestamp: DateTime.utc(2026, 9, 10, 15, 40),
       ),
-    ];
+    ]);
   }
 
   @override
@@ -209,14 +220,16 @@ class FakeSmartcityApi extends SmartcityApi {
   @override
   Future<RankingConsumo> maiorConsumo({
     PeriodoKpi periodo = PeriodoKpi.mes,
-    int limite = 5,
+    int pagina = 1,
+    int tamanho = 5,
+    Ordenacao<CampoOrdemRanking>? ordenar,
     CancelToken? cancelToken,
   }) async {
     return RankingConsumo(
       periodo: periodo,
       inicio: DateTime.utc(2026, 9, 3),
       fim: DateTime.utc(2026, 9, 10),
-      itens: [
+      pagina: paginaUnica(const [
         ItemRanking(
           posicao: 1,
           posteId: 'a2',
@@ -226,7 +239,7 @@ class FakeSmartcityApi extends SmartcityApi {
           consumoKwh: 22.75,
           custoReais: 13.19,
         ),
-      ],
+      ]),
     );
   }
 
