@@ -22,7 +22,7 @@ class DetalhePosteScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(posteDetalheProvider(posteId));
-    final eventos = ref.watch(eventosProvider(posteId)).value;
+    final eventos = ref.watch(eventosProvider(posteId)).value?.itens;
     final live = ref.watch(posteAoVivoProvider(posteId)).value;
     final aoVivo = ref.watch(aoVivoProvider);
 

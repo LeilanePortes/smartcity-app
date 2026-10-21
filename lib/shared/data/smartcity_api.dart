@@ -5,29 +5,69 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_providers.dart';
 import '../models/models.dart';
 
-/// Fachada de acesso à API de Iluminação Pública Inteligente.
-/// Um método por endpoint documentado em `API.md`.
+/// Fachada de acesso à API de Iluminação Pública Inteligente (v1).
+/// Um método por endpoint documentado em `API.md`; os caminhos são relativos a
+/// `AppConfig.apiBaseUrl` (`/api/v1`).
+///
+/// Listagens respondem no envelope [Pagina] e aceitam `pagina`, `tamanho` e
+/// `ordenar`. O `ordenar` só é enviado quando informado — sem ele vale o
+/// padrão do backend.
 class SmartcityApi {
   SmartcityApi(this._client);
 
   final ApiClient _client;
 
-  /// `GET /postes` — lista para o mapa. Filtros opcionais por status e busca
-  /// (rua ou bairro, sem distinção de acento/caixa).
+  /// Máximo aceito em `tamanho` (1–500).
+  static const int tamanhoMaximo = 500;
+
+  /// Teto de páginas em [listarPostes], por segurança contra laço infinito.
+  static const int _maxPaginas = 50;
+
+  /// `GET /postes` — uma página da lista de postes. Filtros opcionais por
+  /// status e busca (rua ou bairro, sem distinção de acento/caixa).
+  Future<Pagina<PosteResumo>> paginaPostes({
+    StatusPoste? status,
+    String? busca,
+    int pagina = 1,
+    int tamanho = tamanhoMaximo,
+    Ordenacao<CampoOrdemPostes>? ordenar,
+    CancelToken? cancelToken,
+  }) async {
+    final data = await _client.get<Map<String, dynamic>>(
+      '/postes',
+      query: {
+        'status': status?.wire,
+        'busca': busca,
+        'pagina': pagina,
+        'tamanho': tamanho,
+        'ordenar': ordenar?.wire,
+      },
+      cancelToken: cancelToken,
+    );
+    return Pagina.fromJson(data, PosteResumo.fromJson);
+  }
+
+  /// Todos os postes que casam com o filtro (o mapa precisa dos 248): pede
+  /// páginas de [tamanhoMaximo] e percorre até `totalPaginas`.
   Future<List<PosteResumo>> listarPostes({
     StatusPoste? status,
     String? busca,
     CancelToken? cancelToken,
   }) async {
-    final data = await _client.get<Map<String, dynamic>>(
-      '/postes',
-      query: {'status': status?.wire, 'busca': busca},
-      cancelToken: cancelToken,
-    );
-    return (data['postes'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(PosteResumo.fromJson)
-        .toList();
+    final postes = <PosteResumo>[];
+    var pagina = 1;
+    while (true) {
+      final p = await paginaPostes(
+        status: status,
+        busca: busca,
+        pagina: pagina,
+        cancelToken: cancelToken,
+      );
+      postes.addAll(p.itens);
+      if (!p.temProxima || p.itens.isEmpty || pagina >= _maxPaginas) break;
+      pagina++;
+    }
+    return postes;
   }
 
   /// `GET /postes/:id` — detalhe do poste.
@@ -53,18 +93,25 @@ class SmartcityApi {
     return TelemetriaHistorico.fromJson(data);
   }
 
-  /// `GET /postes/:id/eventos` — log do sensor 360°, mais recentes primeiro.
-  Future<List<EventoSensor>> eventos(
+  /// `GET /postes/:id/eventos` — log do sensor 360°, paginado. Sem [ordenar],
+  /// o backend devolve os mais recentes primeiro (`-timestamp`).
+  Future<Pagina<EventoSensor>> eventos(
     String id, {
-    int limite = 50,
+    int pagina = 1,
+    int tamanho = 50,
+    Ordenacao<CampoOrdemEventos>? ordenar,
     CancelToken? cancelToken,
   }) async {
-    final data = await _client.get<List<dynamic>>(
+    final data = await _client.get<Map<String, dynamic>>(
       '/postes/$id/eventos',
-      query: {'limite': limite},
+      query: {
+        'pagina': pagina,
+        'tamanho': tamanho,
+        'ordenar': ordenar?.wire,
+      },
       cancelToken: cancelToken,
     );
-    return data.cast<Map<String, dynamic>>().map(EventoSensor.fromJson).toList();
+    return Pagina.fromJson(data, EventoSensor.fromJson);
   }
 
   /// `PATCH /postes/:id/status` — atribuição manual (técnico).
@@ -99,15 +146,23 @@ class SmartcityApi {
     return KpisResumo.fromJson(data);
   }
 
-  /// `GET /kpis/maior-consumo` — ranking dos postes de maior consumo.
+  /// `GET /kpis/maior-consumo` — ranking dos postes de maior consumo,
+  /// paginado. Sem [ordenar], o backend usa maiores primeiro (`-consumoKwh`).
   Future<RankingConsumo> maiorConsumo({
     PeriodoKpi periodo = PeriodoKpi.mes,
-    int limite = 5,
+    int pagina = 1,
+    int tamanho = 5,
+    Ordenacao<CampoOrdemRanking>? ordenar,
     CancelToken? cancelToken,
   }) async {
     final data = await _client.get<Map<String, dynamic>>(
       '/kpis/maior-consumo',
-      query: {'periodo': periodo.wire, 'limite': limite},
+      query: {
+        'periodo': periodo.wire,
+        'pagina': pagina,
+        'tamanho': tamanho,
+        'ordenar': ordenar?.wire,
+      },
       cancelToken: cancelToken,
     );
     return RankingConsumo.fromJson(data);

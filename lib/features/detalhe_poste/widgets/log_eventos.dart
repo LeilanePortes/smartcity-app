@@ -38,7 +38,8 @@ class LogEventos extends ConsumerWidget {
                 onRetry: () => ref.invalidate(eventosProvider(posteId)),
               ),
             ),
-            data: (eventos) {
+            data: (pagina) {
+              final eventos = pagina.itens;
               if (eventos.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -49,6 +50,9 @@ class LogEventos extends ConsumerWidget {
                 );
               }
               final visiveis = eventos.take(12).toList();
+              // `total` do envelope conta todos os eventos do poste, não só os
+              // da página carregada.
+              final anteriores = pagina.total - visiveis.length;
               return Column(
                 children: [
                   for (var i = 0; i < visiveis.length; i++)
@@ -56,11 +60,11 @@ class LogEventos extends ConsumerWidget {
                       evento: visiveis[i],
                       primeira: i == 0,
                     ),
-                  if (eventos.length > visiveis.length)
+                  if (anteriores > 0)
                     Padding(
                       padding: const EdgeInsets.all(BrutSpacing.sm),
                       child: Text(
-                        '+ ${eventos.length - visiveis.length} eventos anteriores',
+                        '+ $anteriores eventos anteriores',
                         style: BrutType.sans(11, color: BrutColors.inkMuted),
                       ),
                     ),

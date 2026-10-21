@@ -71,13 +71,24 @@ class _FakeApi extends SmartcityApi {
         ],
       );
 
+  /// Página devolvida por `eventos` (padrão: vazia).
+  Pagina<EventoSensor> eventosPagina = const Pagina(
+    itens: [],
+    pagina: 1,
+    tamanho: 50,
+    total: 0,
+    totalPaginas: 0,
+  );
+
   @override
-  Future<List<EventoSensor>> eventos(
+  Future<Pagina<EventoSensor>> eventos(
     String id, {
-    int limite = 50,
+    int pagina = 1,
+    int tamanho = 50,
+    Ordenacao<CampoOrdemEventos>? ordenar,
     CancelToken? cancelToken,
   }) async =>
-      [];
+      eventosPagina;
 }
 
 void main() {
@@ -103,6 +114,49 @@ void main() {
     expect(find.text('Rua Itaguari, 136'), findsOneWidget);
     expect(find.text('AGENDAR MANUTENÇÃO'), findsOneWidget);
     expect(find.text('VER NO MAPA'), findsOneWidget);
+  });
+
+  testWidgets('log de eventos usa o total do envelope para os anteriores',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(430, 3000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = _FakeApi()
+      ..eventosPagina = Pagina(
+        itens: [
+          for (var i = 0; i < 50; i++)
+            EventoSensor(
+              id: 'e$i',
+              tipo: TipoEventoSensor.retornoAoPiso,
+              sentido: null,
+              luminosidadeResultante: 50,
+              timestamp: DateTime.utc(2026, 10, 20, 21, 0, i),
+            ),
+        ],
+        pagina: 1,
+        tamanho: 50,
+        total: 106,
+        totalPaginas: 3,
+      );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [smartcityApiProvider.overrideWithValue(api)],
+        child: MaterialApp(
+          theme: BrutTheme.build(),
+          home: const DetalhePosteScreen(posteId: 'id-1'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // 12 visíveis de 106 no total → 94 anteriores (não 50 − 12).
+    await tester.scrollUntilVisible(
+      find.text('+ 94 eventos anteriores'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('+ 94 eventos anteriores'), findsOneWidget);
   });
 
   testWidgets('texto contextual: falha offline abre chamado', (tester) async {

@@ -32,11 +32,12 @@ final telemetriaProvider = FutureProvider.autoDispose
   return api.telemetria(id, periodo: periodo);
 });
 
-/// Log de eventos do sensor 360° (`GET /postes/:id/eventos`).
+/// Log de eventos do sensor 360° (`GET /postes/:id/eventos`): a 1ª página,
+/// com os 50 mais recentes (ordem padrão do backend) e o `total` do poste.
 final eventosProvider = FutureProvider.autoDispose
-    .family<List<EventoSensor>, String>((ref, id) async {
+    .family<Pagina<EventoSensor>, String>((ref, id) async {
   final api = ref.watch(smartcityApiProvider);
-  return api.eventos(id, limite: 50);
+  return api.eventos(id, tamanho: 50);
 });
 
 /// Aplica o `PATCH /postes/:id/status` e recarrega as fontes afetadas.
