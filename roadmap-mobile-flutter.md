@@ -68,6 +68,14 @@ Trilha independente, iniciada somente após o marco de conclusão da trilha de b
 - [ ] Histórico de decisões dos portões e falhas de instalação.
 - [ ] Consulta a cada 5 s com implantação em andamento e a cada 15 s parada, só com a aba aberta.
 
+## Fase 9 · Cadastro de dispositivos
+
+- [ ] Aba "Dispositivos" (RF-DIS-01) consumindo `GET /dispositivos`: lista paginada com "Carregar mais", busca por código ou nome, filtro por domínio e por online/offline (RF-DIS-06).
+- [ ] Detalhe do dispositivo: perfil, domínio, local, área, fabricante, modelo, firmware, inquilino, coordenadas, conexão e estado da credencial.
+- [ ] Formulário de cadastro (`POST /dispositivos`) e edição (`PATCH /dispositivos/:ref`), com seletores do catálogo (domínio, perfil, local e área dependente do local) e as mensagens de erro 400/409 da API.
+- [ ] Credencial (RF-DIS-02): emitir (`POST /dispositivos/:ref/credenciais`) e revogar (`DELETE`), com confirmação; o token aparece uma única vez, com botão de copiar.
+- [ ] A galeria do design system sai da barra de navegação e abre pelo AppBar da aba Arquitetura.
+
 ## Marco de conclusão
 
 A trilha mobile é considerada completa quando as três telas estão navegáveis, consumindo os dados reais da API mockada do backend (não mais dados estáticos locais), com atualização em tempo real funcional e consistência visual validada contra o design aprovado.

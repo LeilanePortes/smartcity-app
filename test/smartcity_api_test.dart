@@ -8,6 +8,8 @@ import 'package:smartcity_app/core/network/api_client.dart';
 import 'package:smartcity_app/shared/data/smartcity_api.dart';
 import 'package:smartcity_app/shared/models/models.dart';
 
+import 'support/fake_smartcity_api.dart' show jsonCredencial, jsonDispositivo;
+
 /// Adaptador HTTP falso: grava cada requisição e responde com o JSON montado
 /// por [responder] — sem rede.
 class _AdaptadorFalso implements HttpClientAdapter {
@@ -229,5 +231,139 @@ void main() {
       'POST /api/v1/ota/implantacoes',
       'POST /api/v1/ota/reverter',
     ]);
+  });
+
+  group('dispositivos', () {
+    test('lista: filtros e ordenar só quando informados', () async {
+      montar((_) => _envelope([jsonDispositivo('p-114', online: false)],
+          tamanho: 20, total: 4, totalPaginas: 1));
+
+      final p = await api.dispositivos(tamanho: 20);
+      expect(p.itens.single.codigo, 'p-114');
+      expect(p.itens.single.conexao.online, isFalse);
+      expect(uri(0).path, '/api/v1/dispositivos');
+      expect(uri(0).queryParameters, {'pagina': '1', 'tamanho': '20'});
+
+      await api.dispositivos(
+        dominio: 'iluminacao',
+        conexao: FiltroConexao.offline,
+        busca: 'p-1',
+        pagina: 2,
+        ordenar: const Ordenacao(CampoOrdemDispositivos.ultimaMensagemEm,
+            decrescente: true),
+      );
+      expect(uri(1).queryParameters, {
+        'dominio': 'iluminacao',
+        'conexao': 'offline',
+        'busca': 'p-1',
+        'pagina': '2',
+        'tamanho': '50',
+        'ordenar': '-ultimaMensagemEm',
+      });
+    });
+
+    test('detalhe por código', () async {
+      montar((_) => jsonDispositivo('p-001'));
+      final d = await api.dispositivo('p-001');
+      expect(d.codigo, 'p-001');
+      expect(http.requisicoes.single.method, 'GET');
+      expect(uri(0).path, '/api/v1/dispositivos/p-001');
+    });
+
+    const dados = DadosDispositivo(
+      codigo: 'teste-app',
+      nome: 'Teste do app',
+      dominio: 'iluminacao',
+      perfil: 'luminaria-led',
+      site: 'centro',
+      area: null,
+      fabricante: 'Equipe',
+      modelo: null,
+      firmware: '1.0.0',
+      latitude: null,
+      longitude: null,
+    );
+
+    test('cadastro: POST com o corpo do formulário e o token na resposta',
+        () async {
+      montar((_) => {
+            'dispositivo': jsonDispositivo('teste-app'),
+            'credencial': jsonCredencial(),
+          });
+
+      final c = await api.cadastrarDispositivo(dados);
+
+      final req = http.requisicoes.single;
+      expect('${req.method} ${req.uri.path}', 'POST /api/v1/dispositivos');
+      expect(req.data, {
+        'codigo': 'teste-app',
+        'nome': 'Teste do app',
+        'dominio': 'iluminacao',
+        'perfil': 'luminaria-led',
+        'site': 'centro',
+        'fabricante': 'Equipe',
+        'firmware': '1.0.0',
+      });
+      expect(c.credencial.token, startsWith('dsp_'));
+    });
+
+    test('edição: PATCH sem código e com "area": null', () async {
+      montar((_) => jsonDispositivo('teste-app'));
+
+      await api.atualizarDispositivo('teste-app', dados);
+
+      final req = http.requisicoes.single;
+      expect('${req.method} ${req.uri.path}', 'PATCH /api/v1/dispositivos/teste-app');
+      final corpo = req.data as Map<String, dynamic>;
+      expect(corpo.containsKey('codigo'), isFalse);
+      expect(corpo.containsKey('area'), isTrue);
+      expect(corpo['area'], isNull);
+    });
+
+    test('credenciais: POST emite, DELETE revoga e o detalhe é relido', () async {
+      // Formato real: nas duas respostas, "dispositivo" é o código (texto).
+      montar((req) => switch (req.method) {
+            'POST' => {'dispositivo': 'p-001', ...jsonCredencial(),
+                       'anterioresRevogadas': 1},
+            'DELETE' => {'dispositivo': 'p-001', 'revogadas': 1,
+                         'revogadaEm': '2026-10-21T20:00:00.000Z'},
+            _ => {...jsonDispositivo('p-001'), 'credencial': {'ativa': false}},
+          });
+
+      final c = await api.emitirCredencial('p-001');
+      final d = await api.revogarCredencial('p-001');
+
+      expect(c.anterioresRevogadas, 1);
+      expect(c.token, startsWith('dsp_'));
+      expect(d.codigo, 'p-001');
+      expect(d.credencial.ativa, isFalse);
+      expect(http.requisicoes.map((r) => '${r.method} ${r.uri.path}'), [
+        'POST /api/v1/dispositivos/p-001/credenciais',
+        'DELETE /api/v1/dispositivos/p-001/credenciais',
+        'GET /api/v1/dispositivos/p-001',
+      ]);
+    });
+
+    test('catálogos dos seletores com tamanho=500', () async {
+      montar((_) => _envelope([
+            {'id': 'x', 'slug': 'centro', 'nome': 'Centro'},
+          ], tamanho: 500));
+
+      await api.dominios();
+      await api.perfis();
+      await api.sites();
+      final areas = await api.areas('centro');
+
+      expect(areas.itens.single.slug, 'centro');
+      expect(http.requisicoes.map((r) => r.uri.path), [
+        '/api/v1/catalogo/dominios',
+        '/api/v1/catalogo/perfis',
+        '/api/v1/sites',
+        '/api/v1/sites/centro/areas',
+      ]);
+      for (final r in http.requisicoes) {
+        expect(r.uri.queryParameters, {'tamanho': '500'});
+      }
+    });
   });
 }

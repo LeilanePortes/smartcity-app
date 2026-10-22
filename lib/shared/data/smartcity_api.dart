@@ -215,6 +215,141 @@ class SmartcityApi {
     );
     return EstadoOta.fromJson(data);
   }
+
+  // ── Catálogo (RF-CEN-01 a 03) ───────────────────────────────────────────
+
+  Future<Pagina<ItemCatalogo>> _catalogo(
+    String path,
+    CancelToken? cancelToken,
+  ) async {
+    final data = await _client.get<Map<String, dynamic>>(
+      path,
+      query: {'tamanho': tamanhoMaximo},
+      cancelToken: cancelToken,
+    );
+    return Pagina.fromJson(data, ItemCatalogo.fromJson);
+  }
+
+  /// `GET /catalogo/dominios?tamanho=500` — opções do seletor de domínio.
+  Future<Pagina<ItemCatalogo>> dominios({CancelToken? cancelToken}) =>
+      _catalogo('/catalogo/dominios', cancelToken);
+
+  /// `GET /catalogo/perfis?tamanho=500` — opções do seletor de perfil.
+  Future<Pagina<ItemCatalogo>> perfis({CancelToken? cancelToken}) =>
+      _catalogo('/catalogo/perfis', cancelToken);
+
+  /// `GET /sites?tamanho=500` — locais (bairros).
+  Future<Pagina<ItemCatalogo>> sites({CancelToken? cancelToken}) =>
+      _catalogo('/sites', cancelToken);
+
+  /// `GET /sites/:ref/areas?tamanho=500` — áreas (ruas) do local [siteRef].
+  Future<Pagina<ItemCatalogo>> areas(
+    String siteRef, {
+    CancelToken? cancelToken,
+  }) =>
+      _catalogo('/sites/${Uri.encodeComponent(siteRef)}/areas', cancelToken);
+
+  // ── Dispositivos (RF-DIS-01, 02 e 06) ───────────────────────────────────
+
+  /// `GET /dispositivos` — página da lista. Filtros vazios e `ordenar` não
+  /// informado ficam fora da requisição (vale o padrão do backend: `codigo`).
+  Future<Pagina<Dispositivo>> dispositivos({
+    String? dominio,
+    String? perfil,
+    String? site,
+    String? area,
+    FiltroConexao? conexao,
+    String? busca,
+    int pagina = 1,
+    int tamanho = 50,
+    Ordenacao<CampoOrdemDispositivos>? ordenar,
+    CancelToken? cancelToken,
+  }) async {
+    final data = await _client.get<Map<String, dynamic>>(
+      '/dispositivos',
+      query: {
+        'dominio': dominio,
+        'perfil': perfil,
+        'site': site,
+        'area': area,
+        'conexao': conexao?.wire,
+        'busca': busca,
+        'pagina': pagina,
+        'tamanho': tamanho,
+        'ordenar': ordenar?.wire,
+      },
+      cancelToken: cancelToken,
+    );
+    return Pagina.fromJson(data, Dispositivo.fromJson);
+  }
+
+  /// `GET /dispositivos/:ref` — [ref] é o id ou o código (ex.: `p-001`).
+  Future<Dispositivo> dispositivo(String ref, {CancelToken? cancelToken}) async {
+    final data = await _client.get<Map<String, dynamic>>(
+      '/dispositivos/${Uri.encodeComponent(ref)}',
+      cancelToken: cancelToken,
+    );
+    return Dispositivo.fromJson(data);
+  }
+
+  /// `POST /dispositivos` — cadastra e emite a credencial. **O token só vem
+  /// nesta resposta.** `409` código repetido · `400` campo/referência inválida.
+  Future<CadastroDispositivo> cadastrarDispositivo(
+    DadosDispositivo dados, {
+    CancelToken? cancelToken,
+  }) async {
+    final data = await _client.post<Map<String, dynamic>>(
+      '/dispositivos',
+      body: dados.paraCriar(),
+      cancelToken: cancelToken,
+    );
+    return CadastroDispositivo.fromJson(data);
+  }
+
+  /// `PATCH /dispositivos/:ref` — todos os campos menos o código.
+  Future<Dispositivo> atualizarDispositivo(
+    String ref,
+    DadosDispositivo dados, {
+    CancelToken? cancelToken,
+  }) async {
+    final data = await _client.patch<Map<String, dynamic>>(
+      '/dispositivos/${Uri.encodeComponent(ref)}',
+      body: dados.paraEditar(),
+      cancelToken: cancelToken,
+    );
+    return Dispositivo.fromJson(data);
+  }
+
+  /// `POST /dispositivos/:ref/credenciais` — emite um token novo e revoga o
+  /// anterior. **O token só vem nesta resposta.**
+  Future<CredencialEmitida> emitirCredencial(
+    String ref, {
+    CancelToken? cancelToken,
+  }) async {
+    final data = await _client.post<Map<String, dynamic>>(
+      '/dispositivos/${Uri.encodeComponent(ref)}/credenciais',
+      cancelToken: cancelToken,
+    );
+    return CredencialEmitida.fromJson(data);
+  }
+
+  /// `DELETE /dispositivos/:ref/credenciais` — revoga a credencial ativa
+  /// (`404` se não houver). A resposta traz só o código em `dispositivo`
+  /// (`{ dispositivo, revogadas, revogadaEm }`), então o detalhe é relido para
+  /// devolver o dispositivo atualizado.
+  Future<Dispositivo> revogarCredencial(
+    String ref, {
+    CancelToken? cancelToken,
+  }) async {
+    final data = await _client.delete<Map<String, dynamic>>(
+      '/dispositivos/${Uri.encodeComponent(ref)}/credenciais',
+      cancelToken: cancelToken,
+    );
+    final d = data['dispositivo'];
+    return d is Map
+        ? Dispositivo.fromJson(d.cast<String, dynamic>())
+        : dispositivo(ref, cancelToken: cancelToken);
+  }
 }
 
 /// Provider da fachada da API.

@@ -6,13 +6,13 @@ import '../../core/theme/brut_spacing.dart';
 import '../../core/theme/brut_typography.dart';
 import '../arquitetura/arquitetura_screen.dart';
 import '../design_system/design_system_screen.dart';
+import '../dispositivos/dispositivos_screen.dart';
 import '../kpis/kpis_screen.dart';
 import '../mapa/mapa_screen.dart';
 import 'shell_providers.dart';
 
-/// Casca de navegação entre as telas principais. A integração completa
-/// mapa ⇄ detalhe ⇄ KPIs é fechada na fase 6; por ora um `IndexedStack`
-/// simples com a galeria do design system incluída para validação visual.
+/// Casca de navegação entre as telas principais (`IndexedStack`). A galeria do
+/// design system não ocupa aba: abre por um ícone no AppBar da Arquitetura.
 class HomeShell extends ConsumerWidget {
   const HomeShell({super.key});
 
@@ -21,9 +21,21 @@ class HomeShell extends ConsumerWidget {
     _TabDef(HomeTab.kpis, 'KPIs', Icons.bar_chart_outlined, KpisScreen()),
     _TabDef(HomeTab.arquitetura, 'Arquitetura', Icons.hub_outlined,
         ArquiteturaScreen()),
-    _TabDef(HomeTab.design, 'Design', Icons.grid_view_outlined,
-        DesignSystemScreen()),
+    _TabDef(HomeTab.dispositivos, 'Dispositivos', Icons.developer_board,
+        DispositivosScreen()),
   ];
+
+  static void _abrirDesignSystem(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(
+          title: Text('Design system',
+              style: BrutType.sans(18, weight: FontWeight.w700)),
+        ),
+        body: const DesignSystemScreen(),
+      ),
+    ));
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -45,6 +57,16 @@ class HomeShell extends ConsumerWidget {
                   Text('ITAGUARI · GO', style: BrutType.label(10)),
                 ],
               ),
+              actions: [
+                if (tab == HomeTab.arquitetura)
+                  IconButton(
+                    key: const Key('abrir-design-system'),
+                    tooltip: 'Galeria do design system',
+                    icon: const Icon(Icons.grid_view_outlined,
+                        size: 20, color: BrutColors.inkMuted),
+                    onPressed: () => _abrirDesignSystem(context),
+                  ),
+              ],
             ),
       body: IndexedStack(
         index: index,
