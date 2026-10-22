@@ -2,6 +2,7 @@
 library;
 
 export 'arquitetura.dart';
+export 'dispositivo.dart';
 export 'enums.dart';
 export 'evento_sensor.dart';
 export 'kpis.dart';

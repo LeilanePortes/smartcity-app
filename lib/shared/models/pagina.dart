@@ -82,6 +82,31 @@ enum CampoOrdemRanking implements CampoOrdenacao {
   final String wire;
 }
 
+/// `ordenar` de `GET /dispositivos` (padrão do backend: `codigo`).
+enum CampoOrdemDispositivos implements CampoOrdenacao {
+  codigo('codigo'),
+  nome('nome'),
+  firmware('firmware'),
+  criadoEm('criadoEm'),
+  ultimaMensagemEm('ultimaMensagemEm');
+
+  const CampoOrdemDispositivos(this.wire);
+
+  @override
+  final String wire;
+}
+
+/// Filtro `conexao` de `GET /dispositivos`.
+enum FiltroConexao {
+  online('online', 'Online'),
+  offline('offline', 'Offline');
+
+  const FiltroConexao(this.wire, this.label);
+
+  final String wire;
+  final String label;
+}
+
 /// Valor do parâmetro `ordenar`: o campo, com `-` na frente se decrescente.
 /// Só os campos do enum de cada endpoint compilam — evita o `400` da API.
 class Ordenacao<C extends CampoOrdenacao> {

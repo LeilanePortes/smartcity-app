@@ -17,6 +17,9 @@ foram capturados da API rodando com o seed + `db:backfill` padrão.
 | Query/param/body inválido | `400` | `{ "message": [ "..." ], "error": "Bad Request", "statusCode": 400 }` |
 | `:id` fora do formato UUID | `400` | idem |
 | Poste inexistente | `404` | `{ "message": "Poste <id> não encontrado.", "error": "Not Found", "statusCode": 404 }` |
+| Catálogo/dispositivo inexistente | `404` | `{ "message": "Dispositivo \"p-999\" não encontrado.", ... }` |
+| Slug ou código repetido | `409` | `{ "message": "Já existe o domínio \"energia\".", "error": "Conflict", "statusCode": 409 }` |
+| Token de dispositivo inválido/revogado | `401` | `{ "message": "Credencial ausente, inválida ou revogada.", "error": "Unauthorized", "statusCode": 401 }` |
 
 Enums:
 
@@ -358,6 +361,132 @@ Detalhes de cada campo no `API.md`.
   }
 }
 ```
+
+---
+
+## Catálogo e dispositivos
+
+Hierarquia **inquilino → local (site) → área → dispositivo**, com domínios e
+perfis configuráveis.
+
+- **Montagem na subida:** a API monta sozinha o domínio `iluminacao`, o perfil
+  `luminaria-led`, os 9 bairros (com polígono), as ruas com postes (com traçado)
+  e **um dispositivo por poste** (`p-001`…`p-248`).
+- **Referências:** `:ref` aceita o `id` (uuid) ou o slug. Nos dispositivos, o
+  slug é o `codigo`.
+- **Listagens:** todas são paginadas (envelope padrão). Detalhes de cada campo
+  no `API.md`.
+
+```jsonc
+// GET /catalogo/dominios · POST /catalogo/dominios  body: { "slug": "energia", "nome": "Energia", "descricao"?: "..." }
+{ "id": "…", "slug": "iluminacao", "nome": "Iluminação pública", "descricao": "…", "criadoEm": "…", "atualizadoEm": "…", "dispositivos": 248 }
+
+// GET /catalogo/perfis · POST /catalogo/perfis
+{ "id": "…", "slug": "luminaria-led", "nome": "Luminária LED com sensor 360°", "descricao": "…",
+  "grandezas": [ { "grandeza": "potencia", "unidade": "kW", "minimo": 0, "maximo": 0.25 },
+                 { "grandeza": "luminosidade", "unidade": "%", "minimo": 0, "maximo": 100 } ],
+  "intervaloEnvioS": 60, "limiteOfflineS": 180, "dispositivos": 248, "criadoEm": "…", "atualizadoEm": "…" }
+
+// GET /sites · POST /sites · GET /sites/:ref       (geometria GeoJSON, [lon, lat])
+{ "id": "…", "slug": "centro", "nome": "Centro", "tipo": "bairro",
+  "geometria": { "type": "Polygon", "coordinates": [[[-49.604582, -15.920801], "…"]] },
+  "areas": 12, "dispositivos": 53, "criadoEm": "…", "atualizadoEm": "…" }
+
+// GET /sites/:ref/areas · POST /sites/:ref/areas
+{ "id": "…", "slug": "avenida-goias", "nome": "Avenida Goiás", "tipo": "rua",
+  "geometria": { "type": "MultiLineString", "coordinates": [[[-49.606362, -15.922239], "…"]] },
+  "site": { "id": "…", "slug": "centro", "nome": "Centro" }, "dispositivos": 9, "criadoEm": "…", "atualizadoEm": "…" }
+
+// GET /dispositivos?dominio=&perfil=&site=&area=&conexao=online|offline&busca=&ordenar=codigo|nome|firmware|criadoEm|ultimaMensagemEm
+// GET /dispositivos/:ref · PATCH /dispositivos/:ref (mesmos campos do POST, menos codigo)
+{ "id": "…", "codigo": "p-001", "nome": "Luminária P-001",
+  "inquilino": { "id": "…", "slug": "itaguari", "nome": "Prefeitura de Itaguari" },
+  "dominio": { "id": "…", "slug": "iluminacao", "nome": "Iluminação pública" },
+  "perfil": { "id": "…", "slug": "luminaria-led", "nome": "Luminária LED com sensor 360°" },
+  "site": { "id": "…", "slug": "centro", "nome": "Centro" },
+  "area": { "id": "…", "slug": "rua-10", "nome": "Rua 10" },                 // pode ser null
+  "fabricante": "Simulador SmartCity (edge)", "modelo": "LUM-LED-100W", "firmware": "2.4.1",
+  "geo": { "type": "Point", "coordinates": [-49.606176, -15.920691] },      // pode ser null
+  "posteId": "…",                                                          // null fora da iluminação
+  "conexao": { "online": true, "ultimaMensagemEm": "2026-10-21T19:52:11.263Z", "limiteOfflineS": 180 },
+  "credencial": { "ativa": true, "prefixo": "b93557b21ba7", "emitidaEm": "…" },   // ou { "ativa": false }
+  "criadoEm": "…", "atualizadoEm": "…" }
+
+// POST /dispositivos  body: { codigo, nome, dominio, perfil, site, area?, fabricante, modelo?, firmware, latitude?, longitude? }
+// → 201 { "dispositivo": { … }, "credencial": { "token": "dsp_<prefixo>_<segredo>", "prefixo", "emitidaEm", "aviso" } }
+//   o token aparece só aqui · 409 código repetido · 400 referência inexistente
+// POST   /dispositivos/:ref/credenciais → 201 token novo (revoga o anterior)
+// DELETE /dispositivos/:ref/credenciais → 200 { dispositivo, revogadas, revogadaEm } · 404 sem credencial ativa
+// GET    /dispositivos/eu   header Authorization: Bearer <token> → 200 Dispositivo · 401 revogado/inválido
+```
+
+---
+
+## Ingestão e séries
+
+Pipeline: receber → autenticar → validar → deduplicar → ordenar → enriquecer →
+publicar. Detalhes de cada campo no `API.md`.
+
+```jsonc
+// POST /ingestao   header Authorization: Bearer <token>   body: mensagem canônica v1.0
+// → 202 { "status": "aceita" | "duplicada", "id_mensagem": "…", "atrasada": false }
+// → 400 { "message": "fora do JSON Schema", "etapa": "validar", "erros": ["…"] }   (vai para a fila de inválidas)
+// → 401 token ausente/revogado · 403 mensagem de outro dispositivo
+
+// POST /ingestao/lote   body: [ … ] ou { "mensagens": [ … ] }  (até 5.000)
+{ "total": 5000, "aceitas": 4997, "duplicadas": 0, "recusadas": 3,
+  "resultados": [ { "indice": 10, "id_mensagem": "…", "status": "recusada", "etapa": "validar", "motivo": "…", "erros": ["…"] } ] }
+
+// MQTT (broker da nuvem, :1884): itaguari/{site}/{dominio}/{dispositivo}/{telemetria|evento|estado}
+
+// GET /ingestao/invalidas?canal=&etapa=&dispositivo=   (paginado)
+{ "id": "…", "recebidoEm": "…", "canal": "mqtt", "etapa": "autenticar", "motivo": "…", "erros": ["…"],
+  "dispositivo": "…", "idMensagem": "…", "topico": "…", "payload": { } }
+
+// GET /series?grandeza=potencia&dispositivo=&area=&site=&dominio=&inicio=&fim=&intervalo=auto|bruto|1m|5m|15m|1h|1d
+{ "grandeza": "potencia", "filtros": { … }, "inicio": "…", "fim": "…", "intervalo": "1h", "unidades": ["kW"], "truncada": false,
+  "pontos": [ { "inicio": "…", "media": 0.0546, "minimo": 0.0473, "maximo": 0.0901, "amostras": 463, "suspeitas": 0 } ] }
+  // bruto: pontos = [ { "em": "…", "valor": 12.4, "suspeita": false, "dispositivoId": "…" } ]
+
+// GET /dispositivos/:ref/telemetria?grandeza=&inicio=&fim=&intervalo=   → { dispositivo, inicio, fim, intervalo, series: [ { grandeza, unidades, pontos, … } ] }
+// GET /dispositivos/:ref/ultimos-valores → { dispositivo, valores: [ { grandeza, valor, unidade, medidoEm, suspeita } ] }
+```
+
+---
+
+## Regras e alarmes
+
+```jsonc
+// POST /regras · GET /regras · GET/PATCH/DELETE /regras/:id · GET /regras/:id/execucoes
+{ "nome": "Temperatura do silo",
+  "dominio": "armazenagem", "site": null, "area": null, "perfil": null, "dispositivo": null,     // escopo (id ou slug), opcional
+  "condicao": { "tipo": "limite", "grandeza": "temperatura", "operador": ">", "valor": 30, "duracaoS": 1800 },
+              // ou { "tipo": "ausencia", "duracaoS": 120 }
+  "severidade": "CRITICO",                                                 // INFO | AVISO | CRITICO
+  "acoes": [ { "tipo": "alarme" }, { "tipo": "notificar", "email": "…" }, { "tipo": "comando", "nome": "…", "parametros": { } },
+             { "tipo": "webhook", "url": "https://…", "tentativas": 3 }, { "tipo": "publicar", "topico": "itaguari/alarmes/…" } ] }
+// resposta: + id, ativa, escopo { dominio|site|area|perfil: { id, slug, nome } | null, dispositivo: { id, codigo, nome } | null }, alarmesAbertos, criadoEm, atualizadoEm
+
+// GET /alarmes?status=ATIVO|RECONHECIDO|RESOLVIDO&severidade=&origem=regra|borda&dispositivo=&regra=   (paginado, -ocorridoEm)
+{ "id": "…", "origem": "regra", "severidade": "CRITICO", "status": "ATIVO",
+  "titulo": "Temperatura do silo: temperatura > 30 Cel", "detalhe": "temperatura = 32 Cel por 60 s seguidos",
+  "grandeza": "temperatura", "valor": 32,
+  "ocorridoEm": "…",            // quando aconteceu (medição ou diagnóstico na borda)
+  "criadoEm": "…", "reconhecidoEm": null, "reconhecidoPor": null, "resolvidoEm": null, "resolvidoPor": null, "comentario": null,
+  "dispositivo": { "id": "…", "codigo": "…", "nome": "…" }, "regra": { "id": "…", "nome": "…" } }   // regra null na origem borda
+// GET /alarmes/:id → + execucoes: [ { tipo, destino, status: "ok"|"falha", tentativas, erro, criadoEm, concluidoEm } ]
+// POST /alarmes/:id/reconhecer   body { "por"?: "…", "comentario"?: "…" } → 200 · 409 se não estiver ATIVO
+// POST /alarmes/:id/resolver     body idem → 200 · 409 se já RESOLVIDO
+// Socket.IO: "alarme:atualizado" (mesmo formato) para todos os conectados
+```
+
+---
+
+## Observabilidade
+
+`GET /metrics` (fora do `/api/v1`) e `http://localhost:9464/metrics` (fog) no formato Prometheus.
+Logs em JSON com `correlacao` = `id_mensagem` (`LOG_NIVEL=debug` mostra o rastro edge → fog → nuvem).
+Toda resposta HTTP traz `X-Correlation-Id`. Detalhes no `API.md`.
 
 ---
 
