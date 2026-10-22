@@ -1,5 +1,6 @@
 import 'enums.dart';
 import 'json.dart';
+import 'pagina.dart';
 
 /// Resposta de `GET /kpis` — consumo, custo e variação da rede no período.
 class KpisResumo {
@@ -118,19 +119,24 @@ class PontoSerie {
       );
 }
 
-/// Resposta de `GET /kpis/maior-consumo` — ranking de consumo.
+/// Resposta de `GET /kpis/maior-consumo` — ranking de consumo, paginado:
+/// `{ periodo, inicio, fim, itens, pagina, tamanho, total, totalPaginas }`.
 class RankingConsumo {
   const RankingConsumo({
     required this.periodo,
     required this.inicio,
     required this.fim,
-    required this.itens,
+    required this.pagina,
   });
 
   final PeriodoKpi periodo;
   final DateTime inicio;
   final DateTime fim;
-  final List<ItemRanking> itens;
+
+  /// Página do ranking (envelope v1); `posicao` de cada item é absoluta.
+  final Pagina<ItemRanking> pagina;
+
+  List<ItemRanking> get itens => pagina.itens;
 
   factory RankingConsumo.fromJson(Json j) => RankingConsumo(
         periodo: PeriodoKpi.values.firstWhere(
@@ -139,7 +145,7 @@ class RankingConsumo {
         ),
         inicio: asDate(j['inicio']),
         fim: asDate(j['fim']),
-        itens: asList(j['ranking']).map(ItemRanking.fromJson).toList(),
+        pagina: Pagina.fromJson(j, ItemRanking.fromJson),
       );
 }
 

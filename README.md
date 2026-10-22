@@ -12,6 +12,7 @@ Itaguari, GO. Consome a API mockada do `smartcity-backend` (REST + WebSocket).
 | **Dashboard de KPIs** | Seletor Dia/Semana/Mês/Ano, consumo e custo com variação, gráfico atual × anterior, ranking top 5, distribuição por status. |
 | **Arquitetura** | Fluxo edge → fog → nuvem com indicador de no ar / fora do ar (API e broker MQTT separados), redução de banda no fog (entrada × saída), gateways por bairro com buffer e alertas recentes do fog. Consulta `GET /arquitetura` a cada 12 s enquanto a aba está aberta. |
 | **Arquitetura · OTA** | Seção "OTA · Grupo canário": versões de firmware em campo, implantação por versão do catálogo (com confirmação) e reversão da frota, ondas 5% → 25% → 50% → 100%, contadores de aparelhos, canário × controle com a razão de consumo frente ao limite, decisões dos portões e falhas. Consulta `GET /ota` a cada 5 s com implantação em andamento e a cada 15 s parada. |
+| **Dispositivos** | Catálogo de dispositivos da plataforma (RF-DIS-01, 02 e 06): lista paginada com "Carregar mais", busca, filtro por domínio e por online/offline; detalhe com atributos, conexão e credencial; cadastro e edição com seletores do catálogo (domínio, perfil, local, área) e erros 400/409 da API; emissão e revogação de credencial, com o token mostrado uma única vez. A galeria do design system abre pelo ícone no AppBar da aba Arquitetura. |
 
 Atualização em tempo real via Socket.IO: marcadores do mapa e a tela de detalhe
 reagem ao simulador do backend; selo "AO VIVO" indica o estado da conexão.
@@ -26,7 +27,7 @@ reagem ao simulador do backend; selo "AO VIVO" indica o estado da conexão.
 - **Design system BRUT:** IBM Plex Sans / Mono (`google_fonts`), radius 0, sem sombra
 
 Organização por feature em `lib/features/` (`mapa`, `detalhe_poste`, `kpis`,
-`arquitetura`, `shell`, `design_system`); base compartilhada em `lib/core/` e `lib/shared/`.
+`arquitetura`, `dispositivos`, `shell`, `design_system`); base compartilhada em `lib/core/` e `lib/shared/`.
 
 ## Rodando
 
@@ -37,7 +38,14 @@ flutter pub get
 flutter run
 ```
 
-A base da API é configurável por `--dart-define`:
+O app consome a **API v1**: as rotas REST ficam em `/api/v1` (ex.:
+`http://localhost:3000/api/v1/postes`) e as listagens respondem paginadas
+(`{ itens, pagina, tamanho, total, totalPaginas }`). O Socket.IO
+(`/tempo-real`) continua na raiz do servidor.
+
+O endereço do servidor é configurável por `--dart-define`. Informe **só o
+servidor**, sem `/api/v1` — o app acrescenta a versão sozinho
+(`AppConfig.apiBaseUrl`):
 
 ```bash
 # Emulador Android (localhost do host = 10.0.2.2)

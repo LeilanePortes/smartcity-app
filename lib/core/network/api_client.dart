@@ -60,6 +60,13 @@ class ApiClient {
     );
   }
 
+  Future<T> delete<T>(
+    String path, {
+    CancelToken? cancelToken,
+  }) async {
+    return _run<T>(() => _dio.delete<T>(path, cancelToken: cancelToken));
+  }
+
   Future<T> patch<T>(
     String path, {
     Object? body,

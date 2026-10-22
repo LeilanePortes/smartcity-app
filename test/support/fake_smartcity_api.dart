@@ -1,9 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:smartcity_app/core/network/api_client.dart';
+import 'package:smartcity_app/core/network/api_exception.dart';
 import 'package:smartcity_app/features/mapa/mapa_geo.dart';
 import 'package:smartcity_app/shared/data/smartcity_api.dart';
 import 'package:smartcity_app/shared/models/models.dart';
+
+/// Envelope v1 com todos os [itens] numa página só.
+Pagina<T> paginaUnica<T>(List<T> itens, {int? total}) => Pagina(
+      itens: itens,
+      pagina: 1,
+      tamanho: itens.length,
+      total: total ?? itens.length,
+      totalPaginas: 1,
+    );
 
 /// API mockada em memória para os testes de widget / navegação.
 class FakeSmartcityApi extends SmartcityApi {
@@ -137,12 +147,14 @@ class FakeSmartcityApi extends SmartcityApi {
   }
 
   @override
-  Future<List<EventoSensor>> eventos(
+  Future<Pagina<EventoSensor>> eventos(
     String id, {
-    int limite = 50,
+    int pagina = 1,
+    int tamanho = 50,
+    Ordenacao<CampoOrdemEventos>? ordenar,
     CancelToken? cancelToken,
   }) async {
-    return [
+    return paginaUnica([
       EventoSensor(
         id: 'e1',
         tipo: TipoEventoSensor.retornoAoPiso,
@@ -150,7 +162,7 @@ class FakeSmartcityApi extends SmartcityApi {
         luminosidadeResultante: 50,
         timestamp: DateTime.utc(2026, 9, 10, 15, 40),
       ),
-    ];
+    ]);
   }
 
   @override
@@ -209,14 +221,16 @@ class FakeSmartcityApi extends SmartcityApi {
   @override
   Future<RankingConsumo> maiorConsumo({
     PeriodoKpi periodo = PeriodoKpi.mes,
-    int limite = 5,
+    int pagina = 1,
+    int tamanho = 5,
+    Ordenacao<CampoOrdemRanking>? ordenar,
     CancelToken? cancelToken,
   }) async {
     return RankingConsumo(
       periodo: periodo,
       inicio: DateTime.utc(2026, 9, 3),
       fim: DateTime.utc(2026, 9, 10),
-      itens: [
+      pagina: paginaUnica(const [
         ItemRanking(
           posicao: 1,
           posteId: 'a2',
@@ -226,7 +240,7 @@ class FakeSmartcityApi extends SmartcityApi {
           consumoKwh: 22.75,
           custoReais: 13.19,
         ),
-      ],
+      ]),
     );
   }
 
@@ -290,7 +304,229 @@ class FakeSmartcityApi extends SmartcityApi {
     otaJson = jsonOtaRevertida();
     return EstadoOta.fromJson(otaJson);
   }
+
+  // ── Catálogo e dispositivos (em memória) ─────────────────────────────────
+
+  /// Dispositivos do fake, na ordem de `codigo` (troque nos testes).
+  List<Map<String, dynamic>> dispositivosJson = [
+    jsonDispositivo('p-001'),
+    jsonDispositivo('p-002', online: false),
+    jsonDispositivo('p-003', credencialAtiva: true),
+  ];
+
+  /// Parâmetros de cada chamada a `dispositivos()`, em ordem.
+  final chamadasDispositivos = <Map<String, Object?>>[];
+
+  /// Se não nulos, as ações lançam estes erros e nada muda.
+  Object? erroCadastro;
+  Object? erroCredencial;
+
+  DadosDispositivo? ultimoCadastro;
+  DadosDispositivo? ultimaEdicao;
+  int emissoes = 0;
+  int revogacoes = 0;
+
+  static final _dominios = [
+    ItemCatalogo.fromJson(const {'id': 'd1', 'slug': 'iluminacao', 'nome': 'Iluminação pública'}),
+    ItemCatalogo.fromJson(const {'id': 'd2', 'slug': 'energia', 'nome': 'Energia'}),
+  ];
+  static final _perfis = [
+    ItemCatalogo.fromJson(const {'id': 'pf1', 'slug': 'luminaria-led', 'nome': 'Luminária LED com sensor 360°'}),
+  ];
+  static final _sites = [
+    ItemCatalogo.fromJson(const {'id': 's1', 'slug': 'centro', 'nome': 'Centro', 'tipo': 'bairro'}),
+    ItemCatalogo.fromJson(const {'id': 's2', 'slug': 'setor-oeste', 'nome': 'Setor Oeste', 'tipo': 'bairro'}),
+  ];
+  static final _areas = {
+    'centro': [
+      ItemCatalogo.fromJson(const {'id': 'a1', 'slug': 'avenida-goias', 'nome': 'Avenida Goiás', 'tipo': 'rua'}),
+      ItemCatalogo.fromJson(const {'id': 'a2', 'slug': 'rua-10', 'nome': 'Rua 10', 'tipo': 'rua'}),
+    ],
+    'setor-oeste': [
+      ItemCatalogo.fromJson(const {'id': 'a3', 'slug': 'rua-anhanguera', 'nome': 'Rua Anhanguera', 'tipo': 'rua'}),
+    ],
+  };
+
+  @override
+  Future<Pagina<ItemCatalogo>> dominios({CancelToken? cancelToken}) async =>
+      paginaUnica(_dominios);
+
+  @override
+  Future<Pagina<ItemCatalogo>> perfis({CancelToken? cancelToken}) async =>
+      paginaUnica(_perfis);
+
+  @override
+  Future<Pagina<ItemCatalogo>> sites({CancelToken? cancelToken}) async =>
+      paginaUnica(_sites);
+
+  @override
+  Future<Pagina<ItemCatalogo>> areas(String siteRef,
+          {CancelToken? cancelToken}) async =>
+      paginaUnica(_areas[siteRef] ?? const []);
+
+  @override
+  Future<Pagina<Dispositivo>> dispositivos({
+    String? dominio,
+    String? perfil,
+    String? site,
+    String? area,
+    FiltroConexao? conexao,
+    String? busca,
+    int pagina = 1,
+    int tamanho = 50,
+    Ordenacao<CampoOrdemDispositivos>? ordenar,
+    CancelToken? cancelToken,
+  }) async {
+    chamadasDispositivos.add({
+      'dominio': dominio,
+      'conexao': conexao?.wire,
+      'busca': busca,
+      'pagina': pagina,
+      'tamanho': tamanho,
+    });
+    var todos = dispositivosJson.map(Dispositivo.fromJson);
+    if (dominio != null) todos = todos.where((d) => d.dominio.slug == dominio);
+    if (conexao != null) {
+      todos = todos.where((d) => d.conexao.online == (conexao == FiltroConexao.online));
+    }
+    if (busca != null) {
+      final q = busca.toLowerCase();
+      todos = todos.where((d) =>
+          d.codigo.contains(q) || d.nome.toLowerCase().contains(q));
+    }
+    final lista = todos.toList();
+    final totalPaginas = lista.isEmpty ? 0 : (lista.length / tamanho).ceil();
+    return Pagina(
+      itens: lista.skip((pagina - 1) * tamanho).take(tamanho).toList(),
+      pagina: pagina,
+      tamanho: tamanho,
+      total: lista.length,
+      totalPaginas: totalPaginas,
+    );
+  }
+
+  Map<String, dynamic>? _json(String ref) {
+    for (final j in dispositivosJson) {
+      if (j['codigo'] == ref || j['id'] == ref) return j;
+    }
+    return null;
+  }
+
+  @override
+  Future<Dispositivo> dispositivo(String ref, {CancelToken? cancelToken}) async {
+    final j = _json(ref);
+    if (j == null) {
+      throw ApiException('Dispositivo "$ref" não encontrado.', statusCode: 404);
+    }
+    return Dispositivo.fromJson(j);
+  }
+
+  @override
+  Future<CadastroDispositivo> cadastrarDispositivo(
+    DadosDispositivo dados, {
+    CancelToken? cancelToken,
+  }) async {
+    if (erroCadastro != null) throw erroCadastro!;
+    ultimoCadastro = dados;
+    if (_json(dados.codigo) != null) {
+      throw ApiException('Já existe o dispositivo "${dados.codigo}".',
+          statusCode: 409);
+    }
+    final j = jsonDispositivo(dados.codigo,
+        nome: dados.nome, credencialAtiva: true, area: dados.area);
+    dispositivosJson = [...dispositivosJson, j];
+    return CadastroDispositivo(
+      dispositivo: Dispositivo.fromJson(j),
+      credencial: CredencialEmitida.fromJson(jsonCredencial()),
+    );
+  }
+
+  @override
+  Future<Dispositivo> atualizarDispositivo(
+    String ref,
+    DadosDispositivo dados, {
+    CancelToken? cancelToken,
+  }) async {
+    if (erroCadastro != null) throw erroCadastro!;
+    ultimaEdicao = dados;
+    final j = _json(ref)!..['nome'] = dados.nome;
+    return Dispositivo.fromJson(j);
+  }
+
+  @override
+  Future<CredencialEmitida> emitirCredencial(
+    String ref, {
+    CancelToken? cancelToken,
+  }) async {
+    if (erroCredencial != null) throw erroCredencial!;
+    emissoes++;
+    _json(ref)!['credencial'] = {
+      'ativa': true,
+      'prefixo': 'b93557b21ba7',
+      'emitidaEm': '2026-10-21T19:51:18.665Z',
+    };
+    return CredencialEmitida.fromJson(
+        {...jsonCredencial(), 'anterioresRevogadas': 1});
+  }
+
+  @override
+  Future<Dispositivo> revogarCredencial(
+    String ref, {
+    CancelToken? cancelToken,
+  }) async {
+    if (erroCredencial != null) throw erroCredencial!;
+    revogacoes++;
+    final j = _json(ref)!..['credencial'] = {'ativa': false};
+    return Dispositivo.fromJson(j);
+  }
 }
+
+/// Credencial recém-emitida no formato real (o token só existe aqui).
+Map<String, dynamic> jsonCredencial() => {
+      'token': 'dsp_b93557b21ba7_FosgDz5O07JUU96bgBYZEHBglsLVpIS_',
+      'prefixo': 'b93557b21ba7',
+      'emitidaEm': '2026-10-21T19:51:18.665Z',
+      'aviso':
+          'Guarde este token agora: ele não é mostrado de novo. Se perder, emita '
+              'outro (o anterior é revogado).',
+    };
+
+/// `Dispositivo` no formato real de `GET /dispositivos`.
+Map<String, dynamic> jsonDispositivo(
+  String codigo, {
+  String? nome,
+  bool online = true,
+  bool credencialAtiva = false,
+  String dominio = 'iluminacao',
+  String? area = 'rua-10',
+}) =>
+    {
+      'id': 'id-$codigo',
+      'codigo': codigo,
+      'nome': nome ?? 'Luminária ${codigo.toUpperCase()}',
+      'inquilino': {'id': 'i1', 'slug': 'itaguari', 'nome': 'Prefeitura de Itaguari'},
+      'dominio': dominio == 'iluminacao'
+          ? {'id': 'd1', 'slug': 'iluminacao', 'nome': 'Iluminação pública'}
+          : {'id': 'd2', 'slug': dominio, 'nome': 'Energia'},
+      'perfil': {'id': 'pf1', 'slug': 'luminaria-led', 'nome': 'Luminária LED com sensor 360°'},
+      'site': {'id': 's1', 'slug': 'centro', 'nome': 'Centro'},
+      'area': area == null ? null : {'id': 'a-$area', 'slug': area, 'nome': 'Rua 10'},
+      'fabricante': 'Simulador SmartCity (edge)',
+      'modelo': 'LUM-LED-100W',
+      'firmware': '2.4.1',
+      'geo': {'type': 'Point', 'coordinates': [-49.606176, -15.920691]},
+      'posteId': 'poste-$codigo',
+      'conexao': {
+        'online': online,
+        'ultimaMensagemEm': '2026-10-21T19:52:11.263Z',
+        'limiteOfflineS': 180,
+      },
+      'credencial': credencialAtiva
+          ? {'ativa': true, 'prefixo': '1a2b3c4d5e6f', 'emitidaEm': '2026-10-21T19:00:00.000Z'}
+          : {'ativa': false},
+      'criadoEm': '2026-10-21T19:49:09.926Z',
+      'atualizadoEm': '2026-10-21T19:49:09.926Z',
+    };
 
 List<Map<String, dynamic>> _catalogoOta() => [
       {'versao': '2.4.1', 'descricao': 'Versão atualmente em campo (estável).'},

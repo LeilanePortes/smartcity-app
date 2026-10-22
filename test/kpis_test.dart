@@ -67,14 +67,21 @@ class _FakeApi extends SmartcityApi {
   @override
   Future<RankingConsumo> maiorConsumo({
     PeriodoKpi periodo = PeriodoKpi.mes,
-    int limite = 5,
+    int pagina = 1,
+    int tamanho = 5,
+    Ordenacao<CampoOrdemRanking>? ordenar,
     CancelToken? cancelToken,
   }) async {
     return RankingConsumo(
       periodo: periodo,
       inicio: DateTime.utc(2026, 9, 3),
       fim: DateTime.utc(2026, 9, 10),
-      itens: [
+      pagina: const Pagina(
+        pagina: 1,
+        tamanho: 5,
+        total: 248,
+        totalPaginas: 50,
+        itens: [
         ItemRanking(
           posicao: 1,
           posteId: 'p1',
@@ -93,7 +100,8 @@ class _FakeApi extends SmartcityApi {
           consumoKwh: 22.28,
           custoReais: 12.92,
         ),
-      ],
+        ],
+      ),
     );
   }
 

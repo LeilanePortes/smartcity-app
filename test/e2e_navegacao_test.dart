@@ -64,7 +64,8 @@ void main() {
     expect(find.text('POSTES'), findsOneWidget);
   });
 
-  testWidgets('navegação entre abas Mapa / KPIs / Design', (tester) async {
+  testWidgets('navegação Mapa / KPIs / Arquitetura → design system / Dispositivos',
+      (tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -82,15 +83,50 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Rua Anhanguera, 112'), findsWidgets);
 
-    // Volta (o detalhe traz o próprio botão de voltar, sem AppBar) e vai para
-    // a galeria do design system.
+    // Volta (o detalhe traz o próprio botão de voltar, sem AppBar).
     await tester.tap(find.byIcon(Icons.arrow_back_ios_new));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    await tester.tap(find.text('Design'));
+    // A galeria do design system saiu da barra: abre pelo AppBar da Arquitetura.
+    expect(find.text('Design'), findsNothing);
+    expect(find.byKey(const Key('abrir-design-system')), findsNothing);
+    await tester.tap(find.text('Arquitetura'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('abrir-design-system')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Design system'), findsOneWidget);
     expect(find.text('SELETOR DE PERÍODO'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pump();
+    // A transição de volta da página dura mais que 400 ms.
+    await tester.pump(const Duration(seconds: 1));
+
+    // Aba Dispositivos: lista do catálogo.
+    await tester.tap(find.text('Dispositivos'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('3 DE 3 DISPOSITIVOS'), findsOneWidget);
+    expect(find.text('p-001'), findsOneWidget);
+    // Sai da aba para o timer da Arquitetura não ficar pendente.
+    await tester.tap(find.text('Mapa'));
+    await tester.pump();
+  });
+
+  testWidgets('barra de navegação cabe em 412 px (4 abas)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(412, 892));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await montarApp(tester);
+
+    for (final aba in ['Mapa', 'KPIs', 'Arquitetura', 'Dispositivos']) {
+      expect(find.text(aba), findsOneWidget);
+    }
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
+    // Sem overflow de layout (o teste falharia com a exceção de RenderFlex).
+    expect(tester.takeException(), isNull);
   });
 }

@@ -26,7 +26,7 @@ final maiorConsumoProvider =
     FutureProvider.autoDispose<RankingConsumo>((ref) async {
   final periodo = ref.watch(kpiPeriodoProvider);
   final api = ref.watch(smartcityApiProvider);
-  return api.maiorConsumo(periodo: periodo, limite: 5);
+  return api.maiorConsumo(periodo: periodo, tamanho: 5);
 });
 
 /// `GET /kpis/postes-por-status` — distribuição da rede (sem período).
